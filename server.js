@@ -135,15 +135,18 @@ function createExhibitServer(options = {}) {
         else if (msg.name === 'swim-started' && room.phase === 'waiting') transition(room,'swimming');
         else if (msg.name === 'swim-ended' && room.phase === 'swimming') {
           emitTD(room);
-          room.returnAt = Date.now() + config.returnHomeMs;
-          transition(room,'returning');
-          room.resetTimer = setTimeout(() => reset(room), config.returnHomeMs);
+          transition(room,'final-ending',true);
         }
       } else if (ws.role === 'display' && msg.name === 'video-ended') {
         // 같은 물고기 화면의 실제 재생 창에서 종료를 받습니다.
         // 다른 탭을 열어도 막히지 않으며, 세션·단계 검사로 중복 전환을 막습니다.
         if (msg.clip === 'main' && room.phase === 'main-playing') transition(room,'game');
         else if (msg.clip === 'ending' && room.phase === 'ending-playing') transition(room,'reveal');
+        else if (msg.clip === 'ending' && msg.stage === 'final-ending' && room.phase === 'final-ending') {
+          room.returnAt = Date.now() + config.returnHomeMs;
+          transition(room,'returning');
+          room.resetTimer = setTimeout(() => reset(room), config.returnHomeMs);
+        }
       }
     });
     ws.on('close', () => {

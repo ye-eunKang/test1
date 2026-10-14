@@ -44,6 +44,9 @@
         case 'swimming':
           if (!FishApp.getState().endingStarted) { FishApp.presentWaiting(state.fish); FishApp.playEnding(); }
           break;
+        case 'final-ending':
+          FishApp.presentCompleted(state.fish);
+          break;
         case 'returning':
           // 영상 종료 중 재연결되어도 수영 영상/TD 신호를 다시 실행하지 않습니다.
           homeTimer = setTimeout(() => FishApp.showHome(), Math.max(0,state.returnAt-Date.now()));

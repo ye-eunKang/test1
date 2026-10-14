@@ -45,6 +45,7 @@
       else water.pause();
     }
     updateDebugState();
+    syncSensorButtons();
   }
   function cancelRun() {
     run?.abort();
@@ -183,6 +184,8 @@
     $('waitingMessage').hidden = !profile.assets.waitingMessage;
     $('endingFish').hidden = true;
     $('fishVideo').hidden = true;
+    $('endingPlay').hidden = true;
+    $('endingPlay').textContent = '물고기 영상 재생하기';
     $('endingStatus').textContent = '';
     $('previewStill').disabled = false;
     const positions = [[7,20,9],[15,23,18],[78,45,9],[64,52,19],[65,56,31],[21,80,9],[9,87,15]];
@@ -202,6 +205,16 @@
     announce('휴대폰을 수평으로 들고 잠시 멈춰주세요.');
     window.dispatchEvent(new CustomEvent('fish:level-ready', {detail:{fish:activeId}}));
   }
+  function holdCompletion() {
+    endingStarted = true;
+    clearTimeout(sensorWatch);
+    $('waitingMessage').hidden = true;
+    $('endingMotion').hidden = true;
+    $('previewStill').hidden = true;
+    $('endingPlay').hidden = true;
+    $('fishVideo').pause();
+    $('endingStatus').textContent = '물고기를 바다로 보냈어요.';
+  }
   async function playEnding() {
     if (!run?.active || endingStarted || screen !== 'ocean') return;
     const current = run;
@@ -212,23 +225,35 @@
     clearTimeout(sensorWatch);
     const fishId = activeId;
     window.dispatchEvent(new CustomEvent('fish:swim-started', { detail: { fish: fishId } }));
+    let finished = false;
+    let placeholder = false;
+    async function finish() {
+      if (finished || !current.active) return;
+      finished = true;
+      holdCompletion();
+      window.dispatchEvent(new CustomEvent('fish:finished', { detail: { fish: fishId } }));
+      // 연결 중에는 서버가 iPad ENDING 종료와 홈 복귀 시간을 관리합니다.
+      if (!window.PhoneSync?.isActive(fishId)
+        && await current.delay(window.FishSyncConfig?.returnHomeMs ?? 4000)) showHome();
+    }
+    function showPlaceholder() {
+      if (!current.active || finished) return;
+      placeholder = true;
+      $('fishVideo').pause();
+      $('fishVideo').hidden = true;
+      $('endingFish').src = profile.assets.fish || '';
+      $('endingFish').hidden = !profile.assets.fish;
+      $('endingStatus').textContent = '영상 대신 아래 버튼으로 물고기를 보내주세요.';
+      $('endingPlay').textContent = '물고기 보내기 · 영상 완료 테스트';
+      $('endingPlay').hidden = false;
+    }
     if (profile.videoSrc) {
       const video = $('fishVideo');
       video.loop = false;
       video.muted = true;
       video.hidden = false;
-      let finished = false;
-      current.listen(video, 'ended', async () => {
-        if (finished || !current.active) return;
-        finished = true;
-        window.dispatchEvent(new CustomEvent('fish:finished', { detail: { fish: fishId } }));
-        // 영상이 끝난 뒤 TD 신호를 보내고 4초 후 복귀합니다.
-        if (await current.delay(window.FishSyncConfig?.returnHomeMs ?? 4000)) showHome();
-      });
-      current.listen(video, 'error', () => {
-        $('endingStatus').textContent = '물고기 영상을 불러오지 못했어요. 영상 경로를 확인해주세요.';
-        $('endingPlay').hidden = false;
-      });
+      current.listen(video, 'ended', () => { if (!placeholder) finish(); });
+      current.listen(video, 'error', showPlaceholder);
       video.src = profile.videoSrc;
       video.load();
       const play = async () => {
@@ -236,22 +261,21 @@
         try {
           await video.play();
           if (!current.active) { video.pause(); return; }
+          if (placeholder || finished) { video.pause(); return; }
           $('endingPlay').hidden = true;
           $('endingStatus').textContent = '';
         } catch (_) {
-          if (!current.active) return;
+          if (!current.active || placeholder || finished) return;
           $('endingStatus').textContent = '버튼을 눌러 물고기를 만나보세요.';
           $('endingPlay').hidden = false;
         }
       };
-      current.listen($('endingPlay'), 'click', play);
+      current.listen($('endingPlay'), 'click', () => { if (placeholder) finish(); else play(); });
       play();
     } else {
-      // 마지막 영상 미등록: 기존 물고기 그림으로 홈 복귀 흐름을 확인합니다.
-      $('endingFish').src = profile.assets.fish || '';
-      $('endingFish').hidden = !profile.assets.fish;
-      if (debug) $('endingStatus').textContent = '영상 미등록 · 임시 물고기 그림 후 홈으로 돌아갑니다.';
-      if (await current.delay(profile.fallbackDisplayMs ?? common.fallbackDisplayMs)) showHome();
+      // 영상 미등록: 버튼으로 영상 종료를 대신합니다. 자동으로 홈으로 보내지 않습니다.
+      showPlaceholder();
+      current.listen($('endingPlay'), 'click', finish);
     }
   }
 
@@ -276,11 +300,18 @@
     motion.previousAt = sample.receivedAt;
   }
   function syncSensorButtons() {
-    $('enableMotion').hidden = motion.enabled;
-    $('endingMotion').hidden = motion.enabled || endingStarted;
+    const guidePhase = window.HomeGuide?.getState().phase;
+    const linkedPhase = window.PhoneSync?.getState()?.phase;
+    const waterNeeded = screen === 'home' && ['water', 'pouring'].includes(guidePhase)
+      && (!linkedPhase || ['water-ready', 'water-playing'].includes(linkedPhase));
+    const levelNeeded = screen === 'reveal' && revealReady;
+    const waitingNeeded = screen === 'ocean' && !endingStarted;
+    const permissionNeeded = !motion.enabled && !motion.isFresh();
+    $('homeMotionGate').hidden = desktop || !waterNeeded || !permissionNeeded;
+    $('enableMotion').hidden = !levelNeeded || !permissionNeeded;
+    $('endingMotion').hidden = !waitingNeeded || !permissionNeeded;
     $('simulate').hidden = !debug;
     $('previewStill').hidden = !debug || endingStarted;
-    if (screen === 'home') $('homeMotionGate').hidden = desktop || motion.isFresh();
     $('sensorNote').textContent = motion.enabled ? '화면이 위를 향하도록 평평하게 들어주세요.' : '';
   }
   function watchSensor() {
@@ -345,6 +376,10 @@
     initialized = true;
     water = new WaterBackground($('homeWater'), window.FishConfig.home);
     motion.subscribe(onMotion);
+    // 홈 안내는 같은 화면 안에서 단계가 바뀌므로 버튼 표시를 다시 계산합니다.
+    new MutationObserver(syncSensorButtons).observe($('homeGuide'), {
+      attributes: true, attributeFilter: ['data-phase'],
+    });
     $('developerPanel').hidden = !debug;
     document.body.classList.toggle('has-debug', debug);
     renderPicker();
@@ -384,6 +419,11 @@
     presentReveal(id) { if (activeId !== id || !run?.active) startInteraction(id); return reveal(); },
     presentWaiting(id) { if (activeId !== id || !run?.active) startInteraction(id); endingWait(); },
     pauseGame() { if (activeId) instances.get(activeId)?.stop(); },
+    presentCompleted(id) {
+      if (activeId !== id || !run?.active) startInteraction(id);
+      if (screen !== 'ocean') endingWait();
+      holdCompletion();
+    },
     playEnding,
     getState: () => ({ screen, activeId, revealReady, endingStarted,
       game: activeId ? instances.get(activeId)?.getState?.() : null }),

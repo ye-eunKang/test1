@@ -15,27 +15,31 @@
     if (state.phase === 'main-playing') return {clip:'main',play:true};
     if (state.phase === 'game') return {clip:'ending',play:false,position:'start'};
     if (state.phase === 'ending-playing') return {clip:'ending',play:true};
+    if (state.phase === 'final-ending') return {clip:'ending',play:true,position:'start'};
     return {clip:'ending',play:false,position:'end'};
   }
   function apply(state) {
+    const previous = desired;
     desired = state;
     if (!unlocked) return;
     const media = mediaFor(state);
     const changed = currentClip !== media.clip;
+    const phaseChanged = previous?.phase !== state.phase || previous?.session !== state.session;
     currentClip = media.clip;
     const current = ++token;
     video.muted = true; video.loop = !!media.loop;
     video.onended = () => {
       if (current !== token || !client.ready || desired.session !== state.session) return;
       const clip = media.clip;
-      const key = `${state.session}:${clip}`;
-      if ((clip === 'main' && desired.phase === 'main-playing') || (clip === 'ending' && desired.phase === 'ending-playing')) {
-        if (endedKey !== key && client.event('video-ended',{clip})) endedKey = key;
+      const key = `${state.session}:${state.phase}:${clip}`;
+      if ((clip === 'main' && desired.phase === 'main-playing')
+        || (clip === 'ending' && ['ending-playing','final-ending'].includes(desired.phase))) {
+        if (endedKey !== key && client.event('video-ended',{clip,stage:state.phase})) endedKey = key;
       }
     };
     const ready = async () => {
       if (current !== token) return;
-      if (media.position === 'start' && changed) video.currentTime = 0;
+      if (media.position === 'start' && (changed || phaseChanged)) video.currentTime = 0;
       if (media.position === 'end' && Number.isFinite(video.duration)) video.currentTime = Math.max(0,video.duration-.04);
       if (!media.play) { video.pause(); return; }
       try { await video.play(); if (current !== token && !mediaFor(desired).play) video.pause(); }
@@ -63,11 +67,12 @@
   // 영상이 끝나는 순간 연결이 끊겼다면, 재연결 후 종료 신호를 한 번 전송합니다.
   const originalApply = client.onState;
   client.onState = state => {
-    if (video.ended && desired?.session === state.session && ((currentClip === 'main' && state.phase === 'main-playing')
-      || (currentClip === 'ending' && state.phase === 'ending-playing'))) {
-      const key = `${state.session}:${currentClip}`;
+    if (video.ended && desired?.session === state.session && desired?.phase === state.phase
+      && ((currentClip === 'main' && state.phase === 'main-playing')
+      || (currentClip === 'ending' && ['ending-playing','final-ending'].includes(state.phase)))) {
+      const key = `${state.session}:${state.phase}:${currentClip}`;
       // 서버가 아직 같은 단계라면 종료를 확인하지 못한 상태입니다. 재연결 때 다시 전송합니다.
-      if (client.event('video-ended',{clip:currentClip})) endedKey = key;
+      if (client.event('video-ended',{clip:currentClip,stage:state.phase})) endedKey = key;
       desired = state;
       return;
     }
