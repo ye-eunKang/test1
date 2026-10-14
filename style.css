@@ -140,8 +140,8 @@ button:focus-visible {
 
 #tap {
   position:absolute;
-  left:40px;
-  top:7%;
+  left:35px;
+  top:30%;
   width:46%;
   height:auto;
   pointer-events:none;
