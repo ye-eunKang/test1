@@ -6,7 +6,7 @@
   return {
     // Node 서버에서 두 페이지를 열면 빈 문자열 그대로 사용합니다.
     // 기존 Static Site를 유지할 때만 'https://새-중계서버.onrender.com' 입력.
-    serverUrl: '',
+    serverUrl: 'https://test1-e3hn.onrender.com/',
     pourStartDeg: 8,
     pourSuccessDeg: 45,
     pourHoldMs: 1000,
