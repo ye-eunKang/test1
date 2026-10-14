@@ -139,7 +139,9 @@ function createExhibitServer(options = {}) {
           transition(room,'returning');
           room.resetTimer = setTimeout(() => reset(room), config.returnHomeMs);
         }
-      } else if (ws.role === 'display' && ws === room.display && msg.name === 'video-ended') {
+      } else if (ws.role === 'display' && msg.name === 'video-ended') {
+        // 같은 물고기 화면의 실제 재생 창에서 종료를 받습니다.
+        // 다른 탭을 열어도 막히지 않으며, 세션·단계 검사로 중복 전환을 막습니다.
         if (msg.clip === 'main' && room.phase === 'main-playing') transition(room,'game');
         else if (msg.clip === 'ending' && room.phase === 'ending-playing') transition(room,'reveal');
       }

@@ -63,10 +63,11 @@
   // 영상이 끝나는 순간 연결이 끊겼다면, 재연결 후 종료 신호를 한 번 전송합니다.
   const originalApply = client.onState;
   client.onState = state => {
-    if (video.ended && ((currentClip === 'main' && state.phase === 'main-playing')
+    if (video.ended && desired?.session === state.session && ((currentClip === 'main' && state.phase === 'main-playing')
       || (currentClip === 'ending' && state.phase === 'ending-playing'))) {
       const key = `${state.session}:${currentClip}`;
-      if (endedKey !== key && client.event('video-ended',{clip:currentClip})) endedKey = key;
+      // 서버가 아직 같은 단계라면 종료를 확인하지 못한 상태입니다. 재연결 때 다시 전송합니다.
+      if (client.event('video-ended',{clip:currentClip})) endedKey = key;
       desired = state;
       return;
     }
