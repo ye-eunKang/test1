@@ -149,8 +149,8 @@ button:focus-visible {
 
 #hose {
   position:absolute;
-  left:90px;
-  top:104px;
+  left:100px;
+  top:90px;
   width:20%;
   height:66%;
   pointer-events:none;
