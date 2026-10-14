@@ -140,7 +140,7 @@ button:focus-visible {
 
 #tap {
   position:absolute;
-  left:90px;
+  left:40px;
   top:7%;
   width:46%;
   height:auto;
@@ -149,7 +149,7 @@ button:focus-visible {
 
 #hose {
   position:absolute;
-  left:228px;
+  left:128px;
   top:204px;
   width:20%;
   height:66%;
