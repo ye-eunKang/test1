@@ -1,0 +1,9 @@
+{
+  "name": "fish-exhibition-sync",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Phone, iPad and TouchDesigner exhibition relay",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=22" },
+  "dependencies": { "ws": "^8.18.3" }
+}

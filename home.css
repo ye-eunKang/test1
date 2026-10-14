@@ -1,0 +1,71 @@
+/* 홈 전용: 기존 5번 디자인의 위치·색과 충돌하지 않게 범위를 제한합니다. */
+#stage[data-screen="home"] { background: #fff; }
+#home { background: #fff; }
+#homeWater {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  display: block; z-index: 0; touch-action: none;
+}
+#homeContent { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+#homeContent button, #homeContent a { pointer-events: auto; }
+#homeMotionGate {
+  position: absolute; left: 20px; right: 20px; bottom: 6%; z-index: 2; text-align: center;
+}
+#homeMotionStatus, #routeNotice { font-size: 12px; line-height: 1.6; }
+#homeMotionStatus:empty, #routeNotice:empty { display: none; }
+#routeNotice { position: absolute; bottom: 16%; left: 20px; right: 20px; text-align: center; }
+
+/* PC 또는 ?debug=1에서만 나타나는 편집 도구 */
+#developerPanel {
+  position: fixed; right: 24px; top: 24px; width: 244px;
+  background: #ecfaf8; color: #205861; padding: 20px;
+  border: 1px solid #9acece; border-radius: 14px;
+  max-height: calc(100svh - 48px); overflow-y: auto;
+  z-index: 20; font-size: 12px;
+}
+.dev-label { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+#debugState { font-size: 11px; opacity: .7; margin-bottom: 18px; }
+#interactionPicker { display: grid; gap: 7px; }
+#developerPanel button {
+  border: 1px solid #acd7d8; background: #fff; color: #205861;
+  padding: 9px 10px; border-radius: 8px; text-align: left; font-size: 11px;
+}
+#developerPanel button:disabled { opacity: .45; cursor: default; }
+.dev-scenes { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0; }
+#developerPanel label { display: flex; justify-content: space-between; }
+#homeTilt { width: 100%; accent-color: #5dcdd0; margin: 12px 0; }
+.dev-help { opacity: .65; line-height: 1.6; margin-bottom: 0; }
+@media (min-width: 900px) {
+  body.has-debug { padding-right: 288px; }
+}
+@media (max-width: 700px) {
+  #developerPanel { top: auto; bottom: 8px; right: 8px; width: 200px; max-height: 40svh; padding: 12px; }
+}
+.home-logo{
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  width: 80%;
+  height: auto;
+  transform: translateX(-50%);
+}
+.home-image-button {
+  position: absolute;
+  left: 50%;
+  bottom: 10%;
+  width: 55%;
+  transform: translateX(-50%);
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.home-image-button img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.home-image-button:active {
+  transform: translateX(-50%) scale(0.97);
+}

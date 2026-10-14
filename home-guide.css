@@ -1,0 +1,32 @@
+/* homeContent 안의 안내 콘텐츠. 물 배경은 아래에서 계속 움직입니다. */
+#homeGuide { position: absolute; inset: 0; }
+
+/* 안내 사진: 이미지가 카드/문구라면 여기에서 위치와 크기를 맞추세요. */
+#homeGuidePhoto {
+  position: absolute;
+  left: 10%;
+  top: 20%;
+  width: 80%;
+  height: auto;
+  display: block;
+  z-index: 0;
+  left: 50%;
+transform: translateX(-50%);
+}
+
+/* 걷는 소녀 GIF: 사진이 바뀌어도 이 좌표와 재생은 그대로 유지합니다. */
+#homeGuideGif {
+  position: absolute;
+  left: 10%;
+  top: 45%;
+  width: 80%;
+  height: auto;
+  display: block;
+  z-index: 1;
+  filter: brightness(0) saturate(100%)
+        invert(62%) sepia(45%) saturate(675%)
+        hue-rotate(139deg) brightness(93%) contrast(91%);
+}
+
+/* 전역 CSS에 이미지 display:block이 있더라도 hidden을 확실히 적용 */
+#homeGuide[hidden], #homeContent [hidden] { display: none !important; }
