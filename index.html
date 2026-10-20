@@ -69,8 +69,10 @@
         <button id="tapButton" aria-label="수도꼭지 돌리기" class="tap-card">
           <span class="shadow">
           </span>
-          <img id="hose" src="assets/hose-0.png" alt="" draggable="false">
-          <img id="tap" src="assets/tap-0.png" alt="수도꼭지" draggable="false">
+          <span class="tap-assembly">
+            <img id="hose" src="assets/hose-0.png" alt="" draggable="false">
+            <img id="tap" src="assets/tap-0.png" alt="수도꼭지" draggable="false">
+          </span>
         </button>
         <svg class="drop" viewBox="0 0 64 110" role="img" aria-label="물방울 채우기">
           <defs>
@@ -117,7 +119,6 @@
 
       </section>
 
-    <button id="restart" class="quiet" hidden>홈으로</button>
   </main>
   <p id="live" class="sr" aria-live="polite"></p>
   <p id="syncStatus" role="status" hidden></p>

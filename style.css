@@ -1,7 +1,7 @@
 /* 수정 안내
  * 위치: left(왼쪽), top(위쪽) / 크기: width(너비), height(높이)
  * % 값은 390 × 844 디자인 화면에 대한 비율입니다.
- * 말풍선 등장 시간: .intro-one, .intro-two의 animation 마지막 값
+ * 말풍선은 크기 변화 없이 나타나고, 화면 터치로 넘어갑니다.
  * 배경 회전 효과: #rays / 물고기 크기: .fish
  */
 /* 1. 공통 색상과 기본 화면 */
@@ -70,14 +70,14 @@ button:focus-visible {
   left:6.154%;
   top:3%;
   width:65.128%;
-  animation:pop .5s both .25s;
+  animation:fade .2s ease-out both;
 }
 
 .intro-two {
   left:27.667%;
   top:23%;
   width:69.231%;
-  animation:pop .5s both 1.5s;
+  animation:fade .2s ease-out both;
 }
 
 .quiet {
@@ -138,21 +138,37 @@ button:focus-visible {
   width:37%;
 }
 
-#tap {
+/* 수도꼭지와 호스는 같은 이미지 좌표를 씁니다. 버디3에서도 연결점이 유지됩니다.
+ * 전체 위치/크기: 아래 left, top, width만 바꾸세요.
+ * 원본 수도꼭지 496×397 / 물 나오는 중심 (385, 360)
+ */
+.tap-assembly {
   position:absolute;
-  left:50px;
+  display:block;
+  left:16%;
   top:7%;
   width:46%;
+  aspect-ratio:496/397;
+  pointer-events:none;
+}
+
+#tap {
+  position:absolute;
+  left:0;
+  top:0;
+  width:100%;
   height:auto;
   pointer-events:none;
 }
 
 #hose {
   position:absolute;
-  left:100px;
-  top:75px;
-  width:20%;
-  height:66%;
+  left:77.62%;
+  top:90.68%;
+  width:43.478%;
+  height:auto;
+  /* 호스 원본 위쪽의 투명 여백(26/630)을 빼고 수도꼭지 끝에 겹칩니다. */
+  transform:translate(-50%,-4.127%);
   pointer-events:none;
 }
 
@@ -200,28 +216,28 @@ button:focus-visible {
   left:23.5%;
   top:16.4%;
   width:48%;
-  animation:pop .5s both .2s;
+  animation:fade .2s ease-out both;
 }
 
 .fish {
   left:23%;
   top:30.9%;
   width:56%;
-  animation:pop .65s both .4s;
+  animation:fade .2s ease-out both;
 }
 
 .awake {
   left:13.077%;
   top:63.351%;
   width:73.333%;
-  animation:pop .5s both 1s;
+  animation:fade .2s ease-out both;
 }
 
 .level {
   left:9.487%;
   top:63.877%;
   width:80%;
-  animation:pop .4s both;
+  animation:fade .2s ease-out both;
 }
 
 .sensor-panel {
@@ -252,7 +268,7 @@ button:focus-visible {
   left:5.949%;
   top:3%;
   width:65.128%;
-  animation:pop .5s both;
+  animation:fade .2s ease-out both;
 }
 
 #bubbles {
@@ -263,15 +279,6 @@ button:focus-visible {
 .bubble {
   position:absolute;
   animation:drift 6s ease-in-out infinite alternate;
-  opacity:.8;
-}
-
-#restart {
-  position:absolute;
-  bottom:3%;
-  left:50%;
-  transform:translateX(-50%);
-  font-size:11px;
   opacity:.8;
 }
 
@@ -360,8 +367,8 @@ button:focus-visible {
 }
 #fish {
   animation:
-    pop 0.65s both 0.4s,
-    fishFloat 2.6s ease-in-out 1.05s infinite;
+    fade .2s ease-out both,
+    fishFloat 2.6s ease-in-out .2s infinite;
 }
 
 @keyframes fishFloat {
@@ -379,14 +386,13 @@ button:focus-visible {
 #fishVideo { z-index: 1; }
 #endingFish {
   z-index: 1;
-  animation: pop .6s both, fishFloat 2.6s ease-in-out .6s infinite;
+  animation: fade .2s ease-out both, fishFloat 2.6s ease-in-out .2s infinite;
 }
 #endingStatus { z-index: 3; padding: 0 20px; font-size: 11px; }
 #endingMotion, #previewStill, #endingPlay {
   position: absolute; left: 50%; bottom: 8%;
   transform: translateX(-50%); white-space: nowrap; z-index: 3;
 }
-#restart { z-index: 4; }
 @media (prefers-reduced-motion: reduce) {
   #reveal #rays, #fish, #endingFish { animation: none; }
 }

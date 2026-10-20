@@ -70,7 +70,7 @@
 .home-image-button:active {
   transform: translateX(-50%) scale(0.97);
 }
- {
+.home-logo {
   animation: logoFloat 3s ease-in-out infinite;
 }
 

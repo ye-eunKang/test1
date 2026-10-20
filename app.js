@@ -6,6 +6,7 @@
   const common = window.FishConfig.common;
   const definitions = new Map();
   const instances = new Map();
+  const artworkCache = new Map();
   const motion = new MotionService();
   const stillness = new StillnessTracker({
     holdMs: common.stillHoldMs, tolerance: common.stillTolerance, maxGapMs: common.sensorGapMs,
@@ -44,7 +45,6 @@
     const views = { home: 'home', interaction: 'interactionScreen', reveal: 'reveal', ocean: 'ocean' };
     for (const [key, id] of Object.entries(views)) $(id).hidden = key !== name;
     $('stage').dataset.screen = name;
-    $('restart').hidden = name === 'home';
     if (water) {
       if (name === 'home') { water.resize(); water.start(); }
       else water.pause();
@@ -103,6 +103,20 @@
     definitions.set(id, definition);
     if (initialized) renderPicker();
   }
+  function prepareArtwork(id) {
+    const assets = profiles.find(entry => entry.id === id)?.assets;
+    if (!assets) return;
+    // iPad의 영상이 재생되는 동안 폰의 다음 이미지를 미리 불러오고 디코딩합니다.
+    for (const key of ['rays','fish','fishName','awakeMessage','levelMessage','waitingMessage','bubble']) {
+      const src = assets[key];
+      if (!src || artworkCache.has(src)) continue;
+      const image = new Image();
+      image.decoding = 'async';
+      artworkCache.set(src, image);
+      image.src = src;
+      if (typeof image.decode === 'function') image.decode().catch(() => artworkCache.delete(src));
+    }
+  }
   function startInteraction(id) {
     if (id === '5') id = 'fish05';
     const entry = profiles.find((item) => item.id === id);
@@ -122,6 +136,7 @@
     cancelRun();
     activeId = id;
     profile = entry;
+    prepareArtwork(id);
     $('stage').dataset.fish = id;
     run = new RunScope();
     for (const item of document.querySelectorAll('.interaction-view')) item.hidden = item !== root;
@@ -417,7 +432,6 @@
     $('developerPanel').hidden = !debug;
     document.body.classList.toggle('has-debug', debug);
     renderPicker();
-    $('restart').addEventListener('click', showHome);
     $('debugHome').addEventListener('click', showHome);
     // 자동 허용이면 즉시 연결하고, 권한 요청이 필요하면 기존 화면의 첫 터치에서 연결합니다.
     $('stage').addEventListener('click', () => {
@@ -461,7 +475,7 @@
   window.FishApp = {
     hasInteraction: (id) => definitions.has(id), registerInteraction, startInteraction, showHome, initialize,
     previewScene, motion,
-    prepareWater() { water?.reset(); },
+    prepareWater(id) { water?.reset(); prepareArtwork(id); },
     setPouring(enabled) { water?.setPouring(enabled); },
     getWaterState: () => water?.getPourState(),
     presentReveal(id) { if (activeId !== id || !run?.active) startInteraction(id); return reveal(); },

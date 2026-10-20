@@ -1,4 +1,4 @@
-/* 로고 → 터치 안내 → NFC 대기 → 터치 물 주기 안내 → 물만 표시 */
+/* 로고 → 터치 안내 → NFC 대기 → 즉시 물 기울이기 + 3초 뒤 안내 페이드 */
 (() => {
   'use strict';
   const GUIDE_SETTINGS = {
@@ -10,6 +10,8 @@
     awaitTagIndex: 1,
     waterIndex: 2,
     previewFishId: 'fish05',
+    waterGuideHoldMs: 3000, // 기울이기 안내를 표시하는 시간
+    waterGuideFadeMs: 600,  // GIF와 말풍선이 함께 투명해지는 시간
   };
   const PHOTO_WIDTHS = [70, 83, 72];
   const stage = document.getElementById('stage');
@@ -21,6 +23,8 @@
   const canvas = document.getElementById('homeWater');
   if (!stage || !button || !logo || !panel || !photo || !gif || !canvas) return;
   let phase = 'cover', photoIndex = 0, pendingId = null;
+  let fadeTimer = null, hideTimer = null;
+  panel.style.setProperty('--water-guide-fade', `${GUIDE_SETTINGS.waterGuideFadeMs}ms`);
   GUIDE_SETTINGS.photos.forEach(src => { const image = new Image(); image.src = src; });
   function setPhase(value) { phase = value; panel.dataset.phase = value; }
   function setPhoto(index) {
@@ -31,7 +35,23 @@
       : '빈 어항을 든 소녀 안내';
     photo.style.width = `${PHOTO_WIDTHS[index] ?? 80}%`;
   }
+  function clearWaterFade() {
+    clearTimeout(fadeTimer); clearTimeout(hideTimer);
+    fadeTimer = hideTimer = null;
+    panel.classList.remove('is-fading');
+  }
+  function fadeWaterGuide() {
+    clearWaterFade();
+    fadeTimer = setTimeout(() => {
+      if (phase !== 'pouring' || stage.dataset.screen !== 'home') return;
+      panel.classList.add('is-fading');
+      hideTimer = setTimeout(() => {
+        if (phase === 'pouring' && stage.dataset.screen === 'home') panel.hidden = true;
+      }, GUIDE_SETTINGS.waterGuideFadeMs);
+    }, GUIDE_SETTINGS.waterGuideHoldMs);
+  }
   function resetGuide() {
+    clearWaterFade();
     FishApp.setPouring(false);
     setPhase('cover'); pendingId = null;
     panel.hidden = true; logo.hidden = false; button.hidden = false;
@@ -48,10 +68,6 @@
       const next = Math.min(photoIndex + 1, GUIDE_SETTINGS.awaitTagIndex);
       setPhoto(next);
       if (next === GUIDE_SETTINGS.awaitTagIndex) setPhase('await-tag');
-    } else if (phase === 'water') {
-      setPhase('pouring'); panel.hidden = true;
-      FishApp.setPouring(true);
-      window.dispatchEvent(new CustomEvent('fish:pour-started', {detail:{fish:pendingId}}));
     }
     // 소녀에게 가까이 가기 안내는 실제 NFC 태그를 받을 때까지 유지합니다.
   }
@@ -62,14 +78,18 @@
       return false;
     }
     const continuing = pendingId === fishId && ['water','pouring','main'].includes(phase);
-    if (!continuing) FishApp.prepareWater();
+    if (continuing) return true;
+    FishApp.prepareWater(fishId);
     pendingId = fishId;
     logo.hidden = true; button.hidden = true; panel.hidden = false;
-    setPhoto(GUIDE_SETTINGS.waterIndex); setPhase('water');
+    setPhoto(GUIDE_SETTINGS.waterIndex); setPhase('pouring');
+    FishApp.setPouring(true);
+    fadeWaterGuide();
     const url = new URL(location.href);
     url.searchParams.set('fish', fishId); url.searchParams.set('phase', 'water');
     try { history.replaceState({}, '', url.href); } catch (_) {}
     if (options.notify !== false) window.dispatchEvent(new CustomEvent('fish:tag-selected', {detail:{fish:fishId}}));
+    window.dispatchEvent(new CustomEvent('fish:pour-started', {detail:{fish:fishId}}));
     return true;
   }
   canvas.addEventListener('water:progress', event => {
@@ -92,13 +112,13 @@
   window.HomeGuide = {
     enterWater, reset:resetGuide,
     startPendingInteraction() { return phase === 'pouring' && !!pendingId && FishApp.startInteraction(pendingId); },
-    restore(fishId, pouring = false) {
+    restore(fishId) {
       if (pendingId !== fishId && !enterWater(fishId,{notify:false})) return false;
-      if (pouring) { setPhase('pouring'); panel.hidden = true; FishApp.setPouring(true); }
       return true;
     },
     finishPour(fishId) {
       if (pendingId !== fishId && !enterWater(fishId,{notify:false})) return;
+      clearWaterFade();
       setPhase('main'); panel.hidden = true; FishApp.setPouring(false);
     },
     getState:() => ({phase,photoIndex,pendingId}),

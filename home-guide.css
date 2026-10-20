@@ -1,5 +1,14 @@
 /* homeContent 안의 안내 콘텐츠. 물 배경은 아래에서 계속 움직입니다. */
-#homeGuide { position: absolute; inset: 0; }
+#homeGuide {
+  position: absolute;
+  inset: 0;
+  opacity: 1;
+  transition: opacity var(--water-guide-fade, 600ms) ease;
+}
+#homeGuide.is-fading { opacity: 0; pointer-events: none; }
+/* 물 기울이기는 안내를 터치하지 않아도 바로 적용됩니다. */
+#homeGuide[data-phase="pouring"] { pointer-events: none; }
+#homeGuide[data-phase="pouring"] .touch-hint { display: none; }
 
 /* 안내 사진: 이미지가 카드/문구라면 여기에서 위치와 크기를 맞추세요. */
 #homeGuidePhoto {
