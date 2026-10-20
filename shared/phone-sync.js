@@ -2,8 +2,8 @@
 (() => {
   'use strict';
   const settings = window.FishSyncConfig;
-  let client = null, pendingTag = false, lastPhase = '', lastPour = null, heldSince = null, lastSensorAt = null;
-  let homeTimer = null, tiltWatch = null, applying = false;
+  let client = null, pendingTag = false, lastPhase = '', lastPour = null, pourSent = false;
+  let tiltWatch = null, applying = false;
   const note = document.getElementById('syncStatus');
   function status(text = '') { note.textContent = text; note.hidden = !text; }
   function apply(state) {
@@ -14,8 +14,7 @@
     pendingTag = false;
     if (state.phase === lastPhase) return;
     const previous = lastPhase;
-    lastPhase = state.phase; heldSince = null; lastPour = null; lastSensorAt = null;
-    clearTimeout(homeTimer);
+    lastPhase = state.phase; lastPour = null;
     if (!['water-ready','water-playing'].includes(state.phase)) clearTimeout(tiltWatch);
     applying = true;
     try {
@@ -31,7 +30,7 @@
           if (HomeGuide.getState().pendingId !== state.fish) HomeGuide.restore(state.fish,true);
           break;
         case 'main-playing':
-          HomeGuide.restore(state.fish,true);
+          HomeGuide.finishPour(state.fish);
           break;
         case 'game': FishApp.startInteraction(state.fish); break;
         case 'ending-playing':
@@ -44,23 +43,16 @@
         case 'swimming':
           if (!FishApp.getState().endingStarted) { FishApp.presentWaiting(state.fish); FishApp.playEnding(); }
           break;
-        case 'final-ending':
-          FishApp.presentCompleted(state.fish);
-          break;
-        case 'returning':
-          // 영상 종료 중 재연결되어도 수영 영상/TD 신호를 다시 실행하지 않습니다.
-          homeTimer = setTimeout(() => FishApp.showHome(), Math.max(0,state.returnAt-Date.now()));
-          break;
       }
     } finally { applying = false; }
   }
   function begin(fish) {
     if (!settings.fish[fish]) { status('이 물고기의 아이패드 영상 설정을 확인해주세요.'); return; }
-    client?.stop(); clearTimeout(homeTimer); clearTimeout(tiltWatch);
-    pendingTag = true; lastPhase = ''; lastPour = null; heldSince = null; lastSensorAt = null;
+    client?.stop(); clearTimeout(tiltWatch);
+    pendingTag = true; lastPhase = ''; lastPour = null; pourSent = false;
     status('아이패드 연결을 확인하고 있어요.');
     client = new ExhibitClient({role:'phone',fish,onState:apply,
-      onStatus(online) { if (online) status(); else { status('연결을 다시 확인하고 있어요.'); heldSince = null; lastPour = null; } },
+      onStatus(online) { if (online) status(); else { status('연결을 다시 확인하고 있어요.'); lastPour = null; pourSent = false; } },
       onError(error) {
         if (error === 'busy') { pendingTag = false; client?.stop(); client = null; HomeGuide.reset(); }
         status(error === 'busy' ? '다른 관객이 진행 중이에요. 잠시 기다려주세요.' : '아이패드 연결 설정을 확인해주세요.');
@@ -74,32 +66,26 @@
     const sample = event.detail;
     if (!client?.ready || sample.fish !== client.fish || client.state.owner !== client.clientId
       || !['water-ready','water-playing'].includes(client.state.phase)) return;
-    if (lastSensorAt !== null && sample.receivedAt - lastSensorAt > FishConfig.common.sensorGapMs) heldSince = null;
-    lastSensorAt = sample.receivedAt;
     clearTimeout(tiltWatch);
     tiltWatch = setTimeout(() => {
-      client?.event('pour',{active:false}); lastPour = null; heldSince = null; lastSensorAt = null;
+      client?.event('pour',{active:false}); lastPour = null;
     }, FishConfig.common.sensorGapMs);
     if (sample.active !== lastPour) { client.event('pour',{active:sample.active}); lastPour = sample.active; }
-    if (!sample.active || sample.moved < settings.pourSuccessDeg) { heldSince = null; return; }
-    heldSince ??= sample.receivedAt;
-    if (sample.receivedAt - heldSince >= settings.pourHoldMs) {
-      if (client.event('pour-complete')) heldSince = null;
-    }
+    // 각도가 아니라 실제로 줄어든 물의 양으로 판단합니다. 영상 종료는 iPad에서 확인합니다.
+    if (sample.complete && !pourSent) pourSent = client.event('pour-complete');
   });
   window.addEventListener('fish:game-complete', () => emit('game-complete'));
   window.addEventListener('fish:level-ready', () => emit('waiting'));
   window.addEventListener('fish:swim-started', () => emit('swim-started'));
-  window.addEventListener('fish:finished', () => emit('swim-ended'));
+  window.addEventListener('fish:finished', () => emit('finish'));
   document.addEventListener('visibilitychange', () => {
-    heldSince = null; lastSensorAt = null;
     clearTimeout(tiltWatch);
     if (document.hidden) { client?.event('pour',{active:false}); lastPour = null; }
   });
   window.addEventListener('fishhome:show', () => {
     if (applying) return;
     if (client && client.state?.owner === client.clientId) client.event('reset');
-    client?.stop(); client = null; clearTimeout(homeTimer); clearTimeout(tiltWatch); lastPhase = ''; pendingTag = false;
+    client?.stop(); client = null; clearTimeout(tiltWatch); lastPhase = ''; pendingTag = false; pourSent = false;
     status();
   });
   window.PhoneSync = {isActive:fish => !!client && client.fish === fish,

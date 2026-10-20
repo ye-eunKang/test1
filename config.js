@@ -4,25 +4,25 @@ window.FishConfig = {
     fillLevel: .88,
     topColor: '#b8ffff', middleColor: '#88e9e7', bottomColor: '#4fd4d8',
     backColor: '#7adedd', wavePx: 8, waveSpeed: .7,
-    springStrength: 25, damping: 6, maxTiltDeg: 65,
+    springStrength: 25, damping: 6, maxTiltDeg: 100,
     bubbleCount: 7, bubbleSpeed: 10,
+    pourRate: .22,             // 넘칠 때 초당 빠져나가는 물의 양(화면 전체 = 1)
+    pourCompleteLevel: .35,    // 이 양 이하까지 줄고 S1_water가 끝나면 다음 영상
   },
   common: {
-    revealMessageMs: 5100,       // 물고기 등장 문구 후 수평 안내까지
+    finishWithButton: true,     // 시연용: 마지막 수평 감지 대신 물고기 보내기 버튼
     rotationSeconds: 30,        // 방사형 배경 한 바퀴 (느리고 부드럽게 계속 회전)
     levelTolerance: 12,         // 처음 수평 안내 단계의 허용 오차(도)
     levelHoldMs: 900,           // 수평을 유지하면 기다림 화면으로 진입
     stillTolerance: 2,          // 마지막 기다림: 이 범위 안의 잔떨림은 무시
     stillHoldMs: 3000,          // 기울기 변화가 없으면 영상 표시
     sensorGapMs: 700,           // 센서 신호가 끊기면 3초 측정 초기화
-    fallbackDisplayMs: 4500,    // 영상 미등록 시 임시 물고기 그림 표시 후 홈 복귀
   },
   interactions: [
     {
       id: 'fish05', label: '5번 · 수도꼭지 / 해포리고기',
       videoSrc: 'assets/fish05-swim.mp4', // 폰의 물고기 수영 영상. 실제 파일명으로 변경
       game: {
-        introMs: 3000,
         requiredTaps: 1,        // 업로드한 코드의 값 유지. 전시용 3회는 여기서 변경
         fillPauseMs: 650,
         tapTimes: [140,140,140,140,140,140,140,140],

@@ -53,13 +53,14 @@ function createExhibitServer(options = {}) {
   const wss = new WebSocketServer({server, path:'/exhibit', maxPayload:8192});
   function roomFor(fish) {
     if (!rooms.has(fish)) rooms.set(fish, {fish, phase:'idle', playing:false, session:null, owner:null,
-      revision:0, returnAt:null, resetTimer:null, disconnectTimer:null, display:null});
+      revision:0, returnAt:null, resetTimer:null, disconnectTimer:null, display:null,
+      pourComplete:false, waterEnded:false});
     return rooms.get(fish);
   }
   function send(ws, data) { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data)); }
   function snapshot(room) {
-    const {fish,phase,playing,session,owner,revision,returnAt} = room;
-    return {type:'state',fish,phase,playing,session,owner,revision,returnAt};
+    const {fish,phase,playing,session,owner,revision,returnAt,pourComplete,waterEnded} = room;
+    return {type:'state',fish,phase,playing,session,owner,revision,returnAt,pourComplete,waterEnded};
   }
   function broadcast(room) {
     room.revision++;
@@ -68,7 +69,7 @@ function createExhibitServer(options = {}) {
   function reset(room) {
     clearTimeout(room.resetTimer); clearTimeout(room.disconnectTimer);
     Object.assign(room, {phase:'idle', playing:false, session:null, owner:null, returnAt:null,
-      resetTimer:null, disconnectTimer:null});
+      resetTimer:null, disconnectTimer:null, pourComplete:false, waterEnded:false});
     broadcast(room);
   }
   function transition(room, phase, playing = false) { room.phase = phase; room.playing = playing; broadcast(room); }
@@ -115,6 +116,11 @@ function createExhibitServer(options = {}) {
       }
       if (!ws.role || msg.type !== 'event') return;
       const room = roomFor(ws.fish);
+      if (ws.role === 'display' && msg.name === 'reset') {
+        // 이전 연결에 남은 초기화 요청이 다음 관객의 진행을 지우지 않도록 합니다.
+        if (msg.session !== room.session) { send(ws,snapshot(room)); return; }
+        reset(room); return;
+      }
       if (ws.role === 'phone' && msg.name === 'tag') {
         if (room.phase !== 'idle') {
           if (room.owner !== ws.clientId) send(ws,{type:'error',message:'busy'});
@@ -127,26 +133,32 @@ function createExhibitServer(options = {}) {
         if (room.owner !== ws.clientId) return;
         if (msg.name === 'reset') { reset(room); return; }
         if (msg.name === 'pour' && ['water-ready','water-playing'].includes(room.phase)) {
-          const playing = msg.active === true;
+          const playing = !room.waterEnded && (msg.active === true || room.pourComplete);
           if (room.playing !== playing) transition(room, playing ? 'water-playing' : room.phase, playing);
-        } else if (msg.name === 'pour-complete' && room.phase === 'water-playing') transition(room,'main-playing',true);
+        } else if (msg.name === 'pour-complete' && room.phase === 'water-playing' && !room.pourComplete) {
+          room.pourComplete = true;
+          if (room.waterEnded) transition(room,'main-playing',true);
+          else { room.playing = true; broadcast(room); }
+        }
         else if (msg.name === 'game-complete' && room.phase === 'game') transition(room,'ending-playing',true);
         else if (msg.name === 'waiting' && room.phase === 'reveal') transition(room,'waiting');
         else if (msg.name === 'swim-started' && room.phase === 'waiting') transition(room,'swimming');
-        else if (msg.name === 'swim-ended' && room.phase === 'swimming') {
+        else if ((msg.name === 'finish' && ['waiting','swimming'].includes(room.phase))
+          || (msg.name === 'swim-ended' && room.phase === 'swimming')) {
           emitTD(room);
-          transition(room,'final-ending',true);
+          // 마지막 전송은 ENDING을 다시 재생하지 않고 두 기기를 바로 처음으로 돌립니다.
+          reset(room);
         }
       } else if (ws.role === 'display' && msg.name === 'video-ended') {
         // 같은 물고기 화면의 실제 재생 창에서 종료를 받습니다.
         // 다른 탭을 열어도 막히지 않으며, 세션·단계 검사로 중복 전환을 막습니다.
-        if (msg.clip === 'main' && room.phase === 'main-playing') transition(room,'game');
-        else if (msg.clip === 'ending' && room.phase === 'ending-playing') transition(room,'reveal');
-        else if (msg.clip === 'ending' && msg.stage === 'final-ending' && room.phase === 'final-ending') {
-          room.returnAt = Date.now() + config.returnHomeMs;
-          transition(room,'returning');
-          room.resetTimer = setTimeout(() => reset(room), config.returnHomeMs);
+        if (msg.clip === 'water' && msg.stage === 'water-playing' && room.phase === 'water-playing' && !room.waterEnded) {
+          room.waterEnded = true;
+          if (room.pourComplete) transition(room,'main-playing',true);
+          else { room.playing = false; broadcast(room); }
         }
+        else if (msg.clip === 'main' && room.phase === 'main-playing') transition(room,'game');
+        else if (msg.clip === 'ending' && room.phase === 'ending-playing') transition(room,'reveal');
       }
     });
     ws.on('close', () => {

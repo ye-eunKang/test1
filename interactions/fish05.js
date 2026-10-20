@@ -6,6 +6,7 @@ FishApp.registerInteraction('fish05', {
     let scope = null;
     let count = 0;
     let busy = false;
+    let introStep = 0;
     const config = flow.config.game;
     const assets = flow.config.assets;
     let imagesReady;
@@ -26,6 +27,10 @@ FishApp.registerInteraction('fish05', {
       $('count').textContent = `물을 ${config.requiredTaps}번 주세요`;
       root.querySelector('.intro-one').src = assets.introOne;
       root.querySelector('.intro-two').src = assets.introTwo;
+      introStep = 0;
+      root.querySelector('.intro-one').hidden = false;
+      root.querySelector('.intro-two').hidden = true;
+      for (const image of root.querySelectorAll('.intro-one,.intro-two')) image.style.animationDelay = '0s';
       root.querySelector('.instruction').src = assets.instruction;
       show('intro');
     }
@@ -82,8 +87,11 @@ FishApp.registerInteraction('fish05', {
         scope = new RunScope();
         reset();
         scope.listen($('tapButton'), 'click', tap);
-        const current = scope;
-        current.delay(config.introMs).then((active) => { if (active) show('water'); });
+        scope.listen($('intro'), 'click', () => {
+          if (root.dataset.step !== 'intro') return;
+          if (introStep++ === 0) root.querySelector('.intro-two').hidden = false;
+          else show('water');
+        });
       },
       stop() { scope?.abort(); scope = null; },
       reset,

@@ -11,11 +11,10 @@
   function mediaFor(state) {
     if (state.phase === 'idle') return {clip:'walk',play:true,loop:true,position:'start'};
     if (state.phase === 'water-ready') return {clip:'water',play:false,position:'start'};
-    if (state.phase === 'water-playing') return {clip:'water',play:state.playing};
+    if (state.phase === 'water-playing') return {clip:'water',play:state.playing && !state.waterEnded};
     if (state.phase === 'main-playing') return {clip:'main',play:true};
     if (state.phase === 'game') return {clip:'ending',play:false,position:'start'};
     if (state.phase === 'ending-playing') return {clip:'ending',play:true};
-    if (state.phase === 'final-ending') return {clip:'ending',play:true,position:'start'};
     return {clip:'ending',play:false,position:'end'};
   }
   function apply(state) {
@@ -32,8 +31,9 @@
       if (current !== token || !client.ready || desired.session !== state.session) return;
       const clip = media.clip;
       const key = `${state.session}:${state.phase}:${clip}`;
-      if ((clip === 'main' && desired.phase === 'main-playing')
-        || (clip === 'ending' && ['ending-playing','final-ending'].includes(desired.phase))) {
+      if ((clip === 'water' && desired.phase === 'water-playing')
+        || (clip === 'main' && desired.phase === 'main-playing')
+        || (clip === 'ending' && desired.phase === 'ending-playing')) {
         if (endedKey !== key && client.event('video-ended',{clip,stage:state.phase})) endedKey = key;
       }
     };
@@ -42,6 +42,10 @@
       if (media.position === 'start' && (changed || phaseChanged)) video.currentTime = 0;
       if (media.position === 'end' && Number.isFinite(video.duration)) video.currentTime = Math.max(0,video.duration-.04);
       if (!media.play) { video.pause(); return; }
+      // 물의 양이 아직 부족해도 종료된 물 영상을 처음부터 다시 재생하지 않습니다.
+      if (media.clip === 'water' && video.ended) {
+        video.onended(); video.pause(); return;
+      }
       try { await video.play(); if (current !== token && !mediaFor(desired).play) video.pause(); }
       catch (_) { if (current === token) { gate.hidden = false; note.textContent = '화면을 눌러 재생을 시작해주세요.'; } }
     };
@@ -68,8 +72,9 @@
   const originalApply = client.onState;
   client.onState = state => {
     if (video.ended && desired?.session === state.session && desired?.phase === state.phase
-      && ((currentClip === 'main' && state.phase === 'main-playing')
-      || (currentClip === 'ending' && ['ending-playing','final-ending'].includes(state.phase)))) {
+      && ((currentClip === 'water' && state.phase === 'water-playing')
+      || (currentClip === 'main' && state.phase === 'main-playing')
+      || (currentClip === 'ending' && state.phase === 'ending-playing'))) {
       const key = `${state.session}:${state.phase}:${currentClip}`;
       // 서버가 아직 같은 단계라면 종료를 확인하지 못한 상태입니다. 재연결 때 다시 전송합니다.
       if (client.event('video-ended',{clip:currentClip,stage:state.phase})) endedKey = key;

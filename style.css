@@ -399,3 +399,27 @@ button:focus-visible {
     aspect-ratio: auto;
   }
 }
+/* 안내는 시간을 기다리지 않고 화면을 터치해서 넘깁니다. */
+.touch-hint {
+  position: absolute;
+  left: 0;
+  bottom: 4%;
+  width: 100%;
+  margin: 0;
+  color: #07555d;
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
+}
+#homeGuide[data-phase="await-tag"] .touch-hint,
+#ocean[data-ready="true"] .touch-hint { display: none; }
+
+/* 폰 화면은 기기 비율에 맞춰 물 배경까지 채웁니다. */
+@media (pointer: coarse) {
+  #stage {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    aspect-ratio: auto;
+  }
+}

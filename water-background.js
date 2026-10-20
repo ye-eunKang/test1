@@ -1,7 +1,7 @@
 /*
  * 물 배경 엔진. 이미지나 외부 라이브러리 없이 Canvas로 그립니다.
- * 기울기에 따라 수면을 돌리고, 수면 높이를 다시 계산해 물의 양을 유지합니다.
- * home.js의 WATER_SETTINGS에서 색상·양·속도를 수정하세요.
+ * 평소에는 물의 양을 유지하고, 물 주기 단계에는 위쪽 가장자리로 넘친 물을 뺍니다.
+ * config.js의 home에서 색상·양·속도를 수정하세요.
  */
 (() => {
   'use strict';
@@ -70,8 +70,11 @@
         maxTiltDeg: 65,
         bubbleCount: 7,
         bubbleSpeed: 10,
+        pourRate: .22,
+        pourCompleteLevel: .35,
         ...options,
       };
+      this.initialFill = clamp(this.options.fillLevel, 0, .98);
       this.angle = 0;
       this.targetAngle = 0;
       this.velocity = 0;
@@ -110,16 +113,55 @@
     }
 
     // PC에서 각도를 전달할 수 있습니다. 예: water.setTilt(25)
-    setTilt(degree) {
+    setTilt(degree, manual = false) {
       if (!Number.isFinite(degree)) return;
+      if (manual) this.manualTilt = true;
       const next = rad(clamp(degree, -this.options.maxTiltDeg, this.options.maxTiltDeg));
       this.energy = Math.min(1.8, this.energy + Math.abs(wrap(next - this.targetAngle)) * .7);
       this.targetAngle = next;
     }
-    setFillLevel(fraction) { this.options.fillLevel = clamp(fraction, .05, .98); }
+    setFillLevel(fraction) { if (Number.isFinite(fraction)) this.options.fillLevel = clamp(fraction, 0, .98); }
     setWaveSize(pixels) { this.options.wavePx = clamp(pixels, 0, 30); }
+    setPouring(enabled) {
+      this.pourEnabled = !!enabled;
+      if (!enabled) this.spilling = false;
+    }
+    getPourState() {
+      return { fillLevel: this.options.fillLevel, initialFill: this.initialFill,
+        spilling: !!this.spilling, complete: !!this.pourComplete,
+        poured: this.initialFill - this.options.fillLevel };
+    }
+    updatePour(dt, timestamp) {
+      this.spilling = false;
+      if (!this.pourEnabled || !this.width || !this.height) return;
+      const fresh = this.manualTilt || (this.lastSensorAt !== null
+        && timestamp - this.lastSensorAt < 700 && this.gravityAvailable);
+      if (fresh && !document.hidden) {
+        const nx = Math.sin(this.angle), ny = Math.cos(this.angle);
+        // 두 위쪽 모서리 중 물이 먼저 넘치는 지점. 파도 흔들림만으로 물을 빼지 않습니다.
+        const rim = Math.abs(nx) * this.width / 2 - ny * this.height / 2;
+        const capacity = polygonArea(clipRectangle(this.width, this.height, nx, ny, rim))
+          / (this.width * this.height);
+        const excess = Math.max(0, this.options.fillLevel - capacity);
+        if (excess > .00001 && dt > 0) {
+          this.setFillLevel(this.options.fillLevel - Math.min(excess, this.options.pourRate * dt));
+          this.spilling = true;
+        }
+        if (this.options.fillLevel <= this.options.pourCompleteLevel) this.pourComplete = true;
+      }
+      this.canvas.dispatchEvent(new CustomEvent('water:progress', { detail: {
+        ...this.getPourState(), receivedAt: timestamp,
+      } }));
+    }
 
     reset() {
+      this.options.fillLevel = this.initialFill;
+      this.pourEnabled = false;
+      this.pourComplete = false;
+      this.spilling = false;
+      this.lastSensorAt = null;
+      this.manualTilt = false;
+      this.gravityAvailable = false;
       this.angle = 0;
       this.targetAngle = 0;
       this.velocity = 0;
@@ -163,6 +205,8 @@
     onOrientation(event) {
       if (!Number.isFinite(event.beta) || !Number.isFinite(event.gamma)) return;
       this.hasSensor = true;
+      this.manualTilt = false;
+      this.lastSensorAt = Number.isFinite(event.receivedAt) ? event.receivedAt : performance.now();
       const beta = rad(event.beta);
       const gamma = rad(event.gamma);
       // 휴대폰을 잡은 방향에 따라 화면 속 중력 방향을 계산합니다.
@@ -172,7 +216,8 @@
       const x = gx * Math.cos(rotation) - gy * Math.sin(rotation);
       const y = gx * Math.sin(rotation) + gy * Math.cos(rotation);
       // 화면이 정확히 위를 향하면 각도 계산이 불안정하므로 마지막 각도를 유지합니다.
-      if (Math.hypot(x, y) > .16) this.setTilt(Math.atan2(x, y) * 180 / PI);
+      this.gravityAvailable = Math.hypot(x, y) > .16;
+      if (this.gravityAvailable) this.setTilt(Math.atan2(x, y) * 180 / PI);
       this.canvas.dispatchEvent(new CustomEvent('water:sensor', {
         detail: { beta: event.beta, gamma: event.gamma },
       }));
@@ -194,6 +239,7 @@
       const base = this.options.wavePx * (this.reducedMotion ? .25 : 1);
       const wanted = (base + motion) * scale;
       this.waveAmplitude += (wanted - this.waveAmplitude) * (1 - Math.exp(-dt * 5));
+      this.updatePour(dt, timestamp);
       this.draw(dt);
       this.frameId = requestAnimationFrame(this.onFrame);
     }
@@ -259,6 +305,7 @@
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, w, h);
+      if (this.options.fillLevel <= 0) return;
 
       // 앞뒤 파도를 어긋나게 그려 레퍼런스처럼 수면을 두 겹으로 만듭니다.
       const back = this.waterPath(nx, ny, offset - w * .01, PI * .92);

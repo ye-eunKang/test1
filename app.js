@@ -66,6 +66,9 @@
     levelSince = null;
     revealReady = false;
     endingStarted = false;
+    waitingReady = false;
+    $('ocean').dataset.ready = 'false';
+    completionRequested = false;
     previewPending = false;
     clearTimeout(sensorWatch);
   }
@@ -150,35 +153,45 @@
     $('fishName').alt = profile.label;
     $('stage').style.setProperty('--rays-duration', `${profile.rotationSeconds ?? common.rotationSeconds}s`);
   }
-  async function reveal() {
+  function reveal() {
     if (!run?.active) return;
-    const current = run;
     instances.get(activeId)?.stop();
     assignArtwork();
     revealReady = false;
+    revealStep = 'awake';
     $('sensorPanel').hidden = true;
     $('message').src = profile.assets.awakeMessage || '';
     $('message').hidden = !profile.assets.awakeMessage;
     $('message').className = 'art awake';
     $('message').alt = '물고기의 몸에 물이 닿자, 물고기가 깨어났어요!';
     show('reveal');
-    if (!await current.delay(profile.revealMessageMs ?? common.revealMessageMs)) return;
+    announce('물고기가 깨어났어요. 화면을 터치해 다음 안내를 보세요.');
+  }
+  function advanceReveal() {
+    if (screen !== 'reveal' || !run?.active) return;
+    if (revealStep === 'level') {
+      if (buttonFinish()) endingWait();
+      else {
+        revealReady = true; levelSince = null;
+        $('sensorPanel').hidden = false;
+        syncSensorButtons(); watchSensor();
+      }
+      return;
+    }
+    revealStep = 'level';
     $('message').src = profile.assets.levelMessage || '';
     $('message').hidden = !profile.assets.levelMessage;
     $('message').className = 'art level';
     $('message').alt = '물고기가 헤엄칠 수 있도록 핸드폰을 수평으로 유지해주세요';
-    revealReady = true;
-    levelSince = null;
-    $('sensorPanel').hidden = false;
-    syncSensorButtons();
-    watchSensor();
-    announce('휴대폰을 수평으로 유지해주세요.');
+    announce('화면을 터치해 물고기를 보내는 단계로 이동하세요.');
   }
   function endingWait() {
     if (!run?.active) return;
     revealReady = false;
     stillness.reset();
     endingStarted = false;
+    waitingReady = false;
+    $('ocean').dataset.ready = 'false';
     previewPending = false;
     assignArtwork();
     $('waitingMessage').hidden = !profile.assets.waitingMessage;
@@ -201,40 +214,55 @@
     }
     show('ocean');
     syncSensorButtons();
-    watchSensor();
-    announce('휴대폰을 수평으로 들고 잠시 멈춰주세요.');
+    announce('화면을 터치해 다음으로 진행하세요.');
     window.dispatchEvent(new CustomEvent('fish:level-ready', {detail:{fish:activeId}}));
+  }
+  function advanceWaiting() {
+    if (screen !== 'ocean' || !run?.active || endingStarted || waitingReady) return;
+    waitingReady = true;
+    $('ocean').dataset.ready = 'true';
+    $('waitingMessage').hidden = true;
+    if (buttonFinish()) {
+      $('endingFish').src = profile.assets.fish || '';
+      $('endingFish').hidden = !profile.assets.fish;
+      $('endingPlay').textContent = '물고기 보내기';
+      $('endingPlay').hidden = false;
+      announce('물고기 보내기 버튼을 눌러주세요.');
+    } else { syncSensorButtons(); watchSensor(); }
   }
   function holdCompletion() {
     endingStarted = true;
     clearTimeout(sensorWatch);
     $('waitingMessage').hidden = true;
-    $('endingMotion').hidden = true;
     $('previewStill').hidden = true;
     $('endingPlay').hidden = true;
     $('fishVideo').pause();
     $('endingStatus').textContent = '물고기를 바다로 보냈어요.';
+  }
+  function finishInteraction() {
+    if (!run?.active || completionRequested) return;
+    completionRequested = true;
+    const fish = activeId;
+    const linked = window.PhoneSync?.isActive(fish);
+    holdCompletion();
+    window.dispatchEvent(new CustomEvent('fish:finished', {detail:{fish}}));
+    if (!linked) showHome();
   }
   async function playEnding() {
     if (!run?.active || endingStarted || screen !== 'ocean') return;
     const current = run;
     endingStarted = true;
     $('waitingMessage').hidden = true;
-    $('endingMotion').hidden = true;
     $('previewStill').hidden = true;
     clearTimeout(sensorWatch);
     const fishId = activeId;
     window.dispatchEvent(new CustomEvent('fish:swim-started', { detail: { fish: fishId } }));
     let finished = false;
     let placeholder = false;
-    async function finish() {
+    function finish() {
       if (finished || !current.active) return;
       finished = true;
-      holdCompletion();
-      window.dispatchEvent(new CustomEvent('fish:finished', { detail: { fish: fishId } }));
-      // 연결 중에는 서버가 iPad ENDING 종료와 홈 복귀 시간을 관리합니다.
-      if (!window.PhoneSync?.isActive(fishId)
-        && await current.delay(window.FishSyncConfig?.returnHomeMs ?? 4000)) showHome();
+      finishInteraction();
     }
     function showPlaceholder() {
       if (!current.active || finished) return;
@@ -281,9 +309,8 @@
 
   function onMotion(sample) {
     if (document.hidden) { levelSince = null; stillness.reset(); return; }
-    $('homeMotionGate').hidden = true;
     if (screen === 'home') water?.onOrientation(sample);
-    if (screen === 'reveal' && revealReady) {
+    if (!buttonFinish() && screen === 'reveal' && revealReady) {
       const flat = Math.abs(sample.beta) < common.levelTolerance && Math.abs(sample.gamma) < common.levelTolerance;
       const interrupted = levelSince !== null && motion.previousAt !== undefined
         && sample.receivedAt - motion.previousAt > common.sensorGapMs;
@@ -292,7 +319,7 @@
         levelSince ??= sample.receivedAt;
         if (sample.receivedAt - levelSince >= common.levelHoldMs) endingWait();
       }
-    } else if (screen === 'ocean' && !endingStarted) {
+    } else if (!buttonFinish() && screen === 'ocean' && waitingReady && !endingStarted) {
       const flat = Math.abs(sample.beta) < common.levelTolerance && Math.abs(sample.gamma) < common.levelTolerance;
       if (!flat) stillness.reset();
       else if (stillness.update(sample)) playEnding();
@@ -304,15 +331,13 @@
     const linkedPhase = window.PhoneSync?.getState()?.phase;
     const waterNeeded = screen === 'home' && ['water', 'pouring'].includes(guidePhase)
       && (!linkedPhase || ['water-ready', 'water-playing'].includes(linkedPhase));
-    const levelNeeded = screen === 'reveal' && revealReady;
-    const waitingNeeded = screen === 'ocean' && !endingStarted;
     const permissionNeeded = !motion.enabled && !motion.isFresh();
     $('homeMotionGate').hidden = desktop || !waterNeeded || !permissionNeeded;
-    $('enableMotion').hidden = !levelNeeded || !permissionNeeded;
-    $('endingMotion').hidden = !waitingNeeded || !permissionNeeded;
-    $('simulate').hidden = !debug;
-    $('previewStill').hidden = !debug || endingStarted;
-    $('sensorNote').textContent = motion.enabled ? '화면이 위를 향하도록 평평하게 들어주세요.' : '';
+    if (waterNeeded && permissionNeeded) $('homeMotionStatus').textContent = motionHint;
+    $('simulate').hidden = !debug || buttonFinish();
+    $('previewStill').hidden = !debug || buttonFinish() || !waitingReady || endingStarted;
+    $('sensorNote').textContent = buttonFinish() ? ''
+      : motion.enabled ? '화면이 위를 향하도록 평평하게 들어주세요.' : motionHint;
   }
   function watchSensor() {
     clearTimeout(sensorWatch);
@@ -323,21 +348,25 @@
       }
     }, 3500);
   }
-  async function enableMotion() {
-    const buttons = [$('enableHomeMotion'), $('enableMotion'), $('endingMotion')].filter(Boolean);
-    buttons.forEach((button) => { button.disabled = true; });
+  async function enableMotion({silent = false} = {}) {
     try {
       await motion.enable();
+      motionHint = '화면을 한 번 터치해 기울기를 허용해주세요.';
       $('homeMotionStatus').textContent = '휴대폰을 좌우로 기울여보세요.';
       syncSensorButtons();
-      watchSensor();
+      if (!silent) watchSensor();
     } catch (error) {
-      const text = error.message === 'https-required'
-        ? '휴대폰 센서는 HTTPS 배포 주소에서 연결해주세요.' : '기울기 권한을 허용해주세요.';
-      $('homeMotionStatus').textContent = text;
-      $('sensorNote').textContent = text;
-      $('endingStatus').textContent = text;
-    } finally { buttons.forEach((button) => { button.disabled = false; }); }
+      const text = error.message === 'https-required' ? '휴대폰 센서는 HTTPS 배포 주소에서 연결해주세요.'
+        : error.message === 'sensor-denied' ? 'Chrome 사이트 설정에서 동작 센서를 허용해주세요.'
+        : error.message === 'sensor-unavailable' ? '이 기기에서 기울기 신호를 읽을 수 없어요.'
+        : '화면을 한 번 터치해 기울기를 허용해주세요.';
+      motionHint = text;
+      if (!silent) {
+        $('homeMotionStatus').textContent = text;
+        $('sensorNote').textContent = text;
+      }
+      syncSensorButtons();
+    }
   }
   async function previewStillness() {
     if (!debug || !run?.active || screen !== 'ocean' || endingStarted || previewPending) return;
@@ -385,13 +414,25 @@
     renderPicker();
     $('restart').addEventListener('click', showHome);
     $('debugHome').addEventListener('click', showHome);
-    for (const id of ['enableHomeMotion', 'enableMotion', 'endingMotion']) $(id)?.addEventListener('click', enableMotion);
+    // 자동 허용이면 즉시 연결하고, 권한 요청이 필요하면 기존 화면의 첫 터치에서 연결합니다.
+    $('stage').addEventListener('click', () => {
+      if (!desktop && !motion.enabled) enableMotion();
+    }, {capture:true});
+    $('reveal').addEventListener('click', (event) => {
+      if (!event.target.closest('button,a,input')) advanceReveal();
+    });
+    $('ocean').addEventListener('click', (event) => {
+      if (!event.target.closest('button,a,input')) advanceWaiting();
+    });
+    $('endingPlay').addEventListener('click', () => {
+      if (buttonFinish() && screen === 'ocean' && waitingReady && !endingStarted) finishInteraction();
+    });
     $('simulate').addEventListener('click', endingWait);
     $('previewStill').addEventListener('click', previewStillness);
     $('debugReveal').addEventListener('click', () => previewScene(activeId || 'fish05', 'reveal'));
     $('debugOcean').addEventListener('click', () => previewScene(activeId || 'fish05', 'ocean'));
     $('homeTilt').addEventListener('input', (event) => {
-      water.setTilt(Number(event.target.value));
+      water.setTilt(Number(event.target.value), true);
       $('homeTiltValue').textContent = `${event.target.value}°`;
     });
     const params = new URLSearchParams(location.search);
