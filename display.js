@@ -8,6 +8,16 @@
   const note = document.getElementById('displayStatus');
   let unlocked = false, currentClip = null, desired = null, token = 0, endedKey = null;
   let waterFrame = null, waterPlay = null, waterBlocked = false;
+  // 물 영상만 적용. 최고 속도와 속도 변화 시간을 여기서 조정하세요.
+  const WATER_PLAYBACK = {
+    maxRate: 3,          // 기존 최대 8배 → 3배. 급가속과 장면 건너뛰기를 줄입니다.
+    responseSeconds: .3,// 속도가 목표값까지 부드럽게 바뀌는 시간
+    bufferSeconds: .24, // 약 0.24초 여유를 두어 네트워크 갱신 사이에도 이어 재생합니다.
+    maxAcceleration: 4,// 1초 동안 올릴 수 있는 배속의 최대 변화량
+    restartGap: .08,
+    stopGap: .008,
+  };
+  let waterRate = 1, lastWaterTick = null, waterRestorePending = true;
   if (!profile) { note.textContent = '물고기 영상 설정을 확인해주세요.'; return; }
   const clamp = (value,min,max) => Math.max(min,Math.min(max,value));
   function waterSync(state = desired) {
@@ -23,27 +33,51 @@
   function stopWaterSync() {
     if (waterFrame !== null) cancelAnimationFrame(waterFrame);
     waterFrame = null;
+    lastWaterTick = null;
   }
   function followWater() {
     if (!unlocked || document.hidden || !client.ready || !waterSync() || video.readyState < 2) return;
     const duration = video.duration;
     if (!Number.isFinite(duration) || duration <= 0) return;
+    const now = performance.now();
+    const dt = lastWaterTick === null ? 1 / 60 : clamp((now - lastWaterTick) / 1000,0,.1);
+    lastWaterTick = now;
     const progress = clamp(desired.waterProgress,0,1);
     const target = progress * duration;
+    // 새로 접속/재연결한 경우에만 현재 물의 양으로 한 번 복구합니다.
+    // 평소 기울임·정지·마지막 따라잡기 중에는 currentTime을 변경하지 않습니다.
+    if (waterRestorePending) {
+      waterRestorePending = false;
+      const restored = Math.min(target,Math.max(0,duration-.25));
+      if (Math.abs(restored-video.currentTime) > WATER_PLAYBACK.restartGap) {
+        video.currentTime = restored;
+        waterRate = 1; video.playbackRate = 1;
+        return;
+      }
+    }
+    if (video.seeking) return;
     const remaining = target - video.currentTime;
-    if (video.ended && progress >= 1) { sendEnded('water'); return; }
-    if (progress < 1 && (!desired.playing || remaining <= .035 || video.ended)) {
+    if (video.ended) {
       video.pause();
-      if (!video.seeking && (remaining > .06 || video.ended)) video.currentTime = Math.min(target,duration-.04);
+      if (progress >= 1) sendEnded('water');
       return;
     }
-    // 정상 기울임은 배출 속도로 재생하고, 급격한 기울임은 현재 물의 양까지 빠르게 따라갑니다.
-    if (!video.seeking && remaining > (progress >= 1 ? .35 : .65)) {
-      video.currentTime = Math.max(video.currentTime,target-(progress >= 1 ? .12 : .10));
+    if (progress < 1 && (remaining <= WATER_PLAYBACK.stopGap
+      || (video.paused && remaining < WATER_PLAYBACK.restartGap))) {
+      video.pause();
+      return;
     }
-    const rate = Math.max(0,desired.waterRate || 0) * duration;
-    video.playbackRate = progress >= 1 ? clamp(rate + remaining * 2,2,8)
-      : clamp(Math.min(rate + Math.max(0,remaining) * 2,Math.max(.25,remaining * 30)),.25,8);
+    const pouringRate = desired.playing && progress < 1 ? Math.max(0,desired.waterRate || 0) * duration : 0;
+    const buffer = desired.playing && progress < 1 ? WATER_PLAYBACK.bufferSeconds : 0;
+    const wantedRate = clamp((progress >= 1 ? 1 : pouringRate) + (remaining-buffer) * 1.8,
+      .25,WATER_PLAYBACK.maxRate);
+    const easedRate = waterRate + (wantedRate-waterRate) * (1-Math.exp(-dt/WATER_PLAYBACK.responseSeconds));
+    // 목표 위치에 가까워지면 감속해서 다음 신호가 오기 전에 앞서가지 않게 합니다.
+    const brakeTime = desired.playing ? .04 : .10;
+    const brakeRate = progress >= 1 ? WATER_PLAYBACK.maxRate : Math.max(.25,remaining/brakeTime);
+    waterRate = clamp(Math.min(easedRate,waterRate+WATER_PLAYBACK.maxAcceleration*dt,brakeRate),
+      .25,WATER_PLAYBACK.maxRate);
+    video.playbackRate = waterRate;
     if (video.paused && !waterPlay && !waterBlocked) {
       const session = desired.session;
       const blocked = () => {
@@ -82,10 +116,11 @@
   function apply(state) {
     const previous = desired;
     desired = state;
+    if (!['water-ready','water-playing'].includes(state.phase)) waterRestorePending = false;
     if (!unlocked) return;
     const media = mediaFor(state);
     const changed = currentClip !== media.clip;
-    if (changed) { waterBlocked = false; waterPlay = null; }
+    if (changed) { waterBlocked = false; waterPlay = null; waterRate = 1; lastWaterTick = null; }
     const phaseChanged = previous?.phase !== state.phase || previous?.session !== state.session;
     currentClip = media.clip;
     if (!media.waterSync) { stopWaterSync(); video.playbackRate = 1; }
@@ -123,7 +158,10 @@
   const client = new ExhibitClient({role:'display',fish,onState:apply,
     onStatus(online) {
       if (online) note.textContent = '';
-      else { note.textContent = '연결을 다시 확인하고 있어요.'; video.pause(); stopWaterSync(); }
+      else {
+        note.textContent = '연결을 다시 확인하고 있어요.';
+        waterRestorePending = true; video.pause(); stopWaterSync();
+      }
     },
     onError() { note.textContent = '디스플레이 연결 설정을 확인해주세요.'; },
   });
