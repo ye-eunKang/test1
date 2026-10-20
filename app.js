@@ -21,6 +21,11 @@
   let initialized = false;
   let previewPending = false;
   let sensorWatch = null;
+  let revealStep = 'awake';
+  let waitingReady = false;
+  let completionRequested = false;
+  let motionHint = '화면을 한 번 터치해 기울기를 허용해주세요.';
+  const buttonFinish = () => common.finishWithButton !== false;
   const desktop = matchMedia('(hover: hover) and (pointer: fine)').matches;
   const debug = desktop || new URLSearchParams(location.search).get('debug') === '1';
 
@@ -451,12 +456,14 @@
     startInteraction(selected);
   }
 }
-    if (!desktop && window.isSecureContext && window.DeviceOrientationEvent
-      && typeof DeviceOrientationEvent.requestPermission !== 'function') enableMotion();
+    if (!desktop && window.isSecureContext && window.DeviceOrientationEvent) enableMotion({silent:true});
   }
   window.FishApp = {
     hasInteraction: (id) => definitions.has(id), registerInteraction, startInteraction, showHome, initialize,
     previewScene, motion,
+    prepareWater() { water?.reset(); },
+    setPouring(enabled) { water?.setPouring(enabled); },
+    getWaterState: () => water?.getPourState(),
     presentReveal(id) { if (activeId !== id || !run?.active) startInteraction(id); return reveal(); },
     presentWaiting(id) { if (activeId !== id || !run?.active) startInteraction(id); endingWait(); },
     pauseGame() { if (activeId) instances.get(activeId)?.stop(); },
