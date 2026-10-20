@@ -43,15 +43,16 @@
 .home-logo{
   position: absolute;
   left: 50%;
-  top: 30%;
+  top: 25%;
   width: 80%;
   height: auto;
   transform: translateX(-50%);
 }
+
 .home-image-button {
   position: absolute;
   left: 50%;
-  bottom: 10%;
+  bottom: 35%;
   width: 55%;
   transform: translateX(-50%);
   padding: 0;
@@ -68,4 +69,16 @@
 
 .home-image-button:active {
   transform: translateX(-50%) scale(0.97);
+}
+ {
+  animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+  0%, 100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, -10px);
+  }
 }

@@ -75,7 +75,7 @@ button:focus-visible {
 
 .intro-two {
   left:27.667%;
-  top:20.877%;
+  top:23%;
   width:69.231%;
   animation:pop .5s both 1.5s;
 }
@@ -140,7 +140,7 @@ button:focus-visible {
 
 #tap {
   position:absolute;
-  left:40px;
+  left:50px;
   top:7%;
   width:46%;
   height:auto;
@@ -150,7 +150,7 @@ button:focus-visible {
 #hose {
   position:absolute;
   left:100px;
-  top:90px;
+  top:75px;
   width:20%;
   height:66%;
   pointer-events:none;
@@ -176,11 +176,11 @@ button:focus-visible {
 #rays {
   position: absolute;
   display: block;
-  width: 300%;
+  width: 400%;
   max-width: none;
   height: auto;
   left: 50%;
-  top: 50%;
+  top: 40%;
   transform: translate(-50%, -50%) rotate(0deg);
   transform-origin: center;
   opacity: 1;
@@ -198,14 +198,14 @@ button:focus-visible {
 
 .fish-name {
   left:23.5%;
-  top:26.4%;
+  top:16.4%;
   width:48%;
   animation:pop .5s both .2s;
 }
 
 .fish {
   left:23%;
-  top:38.9%;
+  top:30.9%;
   width:56%;
   animation:pop .65s both .4s;
 }
