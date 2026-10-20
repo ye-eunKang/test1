@@ -68,9 +68,10 @@
 }
 
 .home-image-button:active {
-  transform: translateX(-50%) scale(0.97);
+  scale: 0.97;
 }
-.home-logo {
+.home-logo,
+.home-image-button {
   animation: logoFloat 3s ease-in-out infinite;
 }
 
@@ -84,7 +85,6 @@
 }
 
 /* 말풍선 전체에 적용 */
-#homeGuidePhoto,
 .intro-one,
 .intro-two,
 .instruction,
@@ -107,6 +107,8 @@
 
 /* 기기의 움직임 줄이기 설정 반영 */
 @media (prefers-reduced-motion: reduce) {
+  .home-logo,
+  .home-image-button,
   #homeGuidePhoto,
   .intro-one,
   .intro-two,

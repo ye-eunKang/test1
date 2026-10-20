@@ -7,6 +7,7 @@
   const definitions = new Map();
   const instances = new Map();
   const artworkCache = new Map();
+  const decodedArtwork = new WeakMap();
   const motion = new MotionService();
   const stillness = new StillnessTracker({
     holdMs: common.stillHoldMs, tolerance: common.stillTolerance, maxGapMs: common.sensorGapMs,
@@ -117,6 +118,19 @@
       if (typeof image.decode === 'function') image.decode().catch(() => artworkCache.delete(src));
     }
   }
+  function setArtworkSource(id, source) {
+    const image = $(id);
+    image.decoding = 'async';
+    if (!source) {
+      image.removeAttribute('src'); decodedArtwork.delete(image); return;
+    }
+    if (image.getAttribute('src') !== source) image.src = source;
+    if (decodedArtwork.get(image) === source) return;
+    decodedArtwork.set(image, source);
+    if (typeof image.decode === 'function') image.decode().catch(() => {
+      if (decodedArtwork.get(image) === source) decodedArtwork.delete(image);
+    });
+  }
   function startInteraction(id) {
     if (id === '5') id = 'fish05';
     const entry = profiles.find((item) => item.id === id);
@@ -137,6 +151,9 @@
     activeId = id;
     profile = entry;
     prepareArtwork(id);
+    // 게임/아이패드 영상 중에 실제 표시할 img도 준비합니다. 등장 순간에는 src를 다시 지정하지 않습니다.
+    assignArtwork();
+    setArtworkSource('message', entry.assets.awakeMessage);
     $('stage').dataset.fish = id;
     run = new RunScope();
     for (const item of document.querySelectorAll('.interaction-view')) item.hidden = item !== root;
@@ -166,7 +183,7 @@
   function assignArtwork() {
     const assets = profile.assets;
     for (const [id, key] of [['rays','rays'], ['fish','fish'], ['fishName','fishName'], ['waitingMessage','waitingMessage']]) {
-      if (assets[key]) { $(id).src = assets[key]; $(id).hidden = false; }
+      if (assets[key]) { setArtworkSource(id, assets[key]); $(id).hidden = false; }
       else $(id).hidden = true;
     }
     $('fish').alt = profile.label;
@@ -180,7 +197,7 @@
     revealReady = false;
     revealStep = 'awake';
     $('sensorPanel').hidden = true;
-    $('message').src = profile.assets.awakeMessage || '';
+    setArtworkSource('message', profile.assets.awakeMessage);
     $('message').hidden = !profile.assets.awakeMessage;
     $('message').className = 'art awake';
     $('message').alt = '물고기의 몸에 물이 닿자, 물고기가 깨어났어요!';
@@ -199,7 +216,7 @@
       return;
     }
     revealStep = 'level';
-    $('message').src = profile.assets.levelMessage || '';
+    setArtworkSource('message', profile.assets.levelMessage);
     $('message').hidden = !profile.assets.levelMessage;
     $('message').className = 'art level';
     $('message').alt = '물고기가 헤엄칠 수 있도록 핸드폰을 수평으로 유지해주세요';
@@ -243,7 +260,7 @@
     $('ocean').dataset.ready = 'true';
     $('waitingMessage').hidden = true;
     if (buttonFinish()) {
-      $('endingFish').src = profile.assets.fish || '';
+      setArtworkSource('endingFish', profile.assets.fish);
       $('endingFish').hidden = !profile.assets.fish;
       $('endingPlay').textContent = '물고기 보내기';
       $('endingPlay').hidden = false;

@@ -48,7 +48,8 @@
 
      <div id="homeGuide" hidden>
       <img id="homeGuidePhoto"
-          src="assets/Web page_intro-ment1.png"
+          src="assets/web/Web page_intro-ment1.png"
+          width="1024" height="526" decoding="async"
           alt="첫 번째 안내">
 
       <img id="homeGuideGif"
@@ -69,20 +70,21 @@
       <section id="intro" class="scene">
         <img class="art intro-one" src="assets/5_01-1.png" alt="이 물고기… 물을 주면 깨어날지도 몰라!">
         <img class="art intro-two" src="assets/5_01-2.png" alt="네가 수도꼭지를 돌려주면 내가 물고기를 구해볼게!">
-        <p class="touch-hint">화면을 터치해 계속하기</p>
 
       </section>
       <!-- 2. 수도꼭지 화면 — 클릭 영역, 호스, 물방울 -->
       <section id="water" class="scene" hidden>
         <img class="art instruction" src="assets/5_02-멘트.png" alt="수도꼭지를 돌려 소녀를 도와주세요">
-        <button id="tapButton" aria-label="수도꼭지 돌리기" class="tap-card">
+        <div class="tap-card">
           <span class="shadow">
           </span>
           <span class="tap-assembly">
             <img id="hose" src="assets/hose-0.png" alt="" draggable="false">
-            <img id="tap" src="assets/tap-0.png" alt="수도꼭지" draggable="false">
+            <button id="tapButton" class="tap-target" type="button" aria-label="수도꼭지 돌리기">
+              <img id="tap" src="assets/tap-0.png" alt="" draggable="false">
+            </button>
           </span>
-        </button>
+        </div>
         <svg class="drop" viewBox="0 0 64 110" role="img" aria-label="물방울 채우기">
           <defs>
             <clipPath id="dropClip">
@@ -102,11 +104,10 @@
     </section>
       <!-- 3. 물고기 등장 / 수평 안내 화면 -->
       <section id="reveal" class="scene" hidden>
-        <img id="rays" src="assets/5_back.png" alt="">
-        <img id="fishName" class="art fish-name" src="assets/5_03-물고기이름.png" alt="해포리고기">
-        <img id="fish" class="art fish" src="assets/5_03-물고기.png" alt="초록색 해포리고기">
-        <img id="message" class="art awake" src="assets/5_03-말풍선.png" alt="물고기의 몸에 물이 닿자, 물고기가 깨어났어요!">
-        <p class="touch-hint">화면을 터치해 계속하기</p>
+        <img id="rays" src="assets/web/5_back.png" decoding="async" alt="">
+        <img id="fishName" class="art fish-name" src="assets/web/5_03-물고기이름.png" decoding="async" alt="해포리고기">
+        <img id="fish" class="art fish" src="assets/web/5_03-물고기.png" decoding="async" alt="초록색 해포리고기">
+        <img id="message" class="art awake" src="assets/web/5_03-말풍선.png" decoding="async" alt="물고기의 몸에 물이 닿자, 물고기가 깨어났어요!">
         <div id="sensorPanel" class="sensor-panel" hidden>
           <p id="sensorNote">
           </p>
@@ -117,8 +118,7 @@
       <section id="ocean" class="scene" hidden>
         <div id="bubbles" aria-hidden="true">
         </div>
-        <img id="waitingMessage" class="art waiting" src="assets/5_10-말풍선.png" alt="물고기가 헤엄칠 수 있도록 우리 잠시 기다려보자">
-        <p class="touch-hint">화면을 터치해 계속하기</p>
+        <img id="waitingMessage" class="art waiting" src="assets/web/5_10-말풍선.png" decoding="async" alt="물고기가 헤엄칠 수 있도록 우리 잠시 기다려보자">
         <img id="endingFish" class="art fish" alt="물고기" hidden>
         <p id="endingStatus" role="status"></p>
         <button id="previewStill" class="quiet secondary" hidden>PC 미리보기 · 3초 정지</button>

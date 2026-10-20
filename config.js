@@ -32,10 +32,11 @@ window.FishConfig = {
       assets: {
         introOne: 'assets/5_01-1.png', introTwo: 'assets/5_01-2.png',
         instruction: 'assets/5_02-멘트.png',
-        rays: 'assets/5_back.png', fish: 'assets/5_03-물고기.png',
-        fishName: 'assets/5_03-물고기이름.png',
-        awakeMessage: 'assets/5_03-말풍선.png', levelMessage: 'assets/5_09-말풍선.png',
-        waitingMessage: 'assets/5_10-말풍선.png', bubble: 'assets/5_10-공기방울.png',
+        // assets/web은 폰용으로 크기를 줄인 이미지입니다. 원본은 assets에 유지합니다.
+        rays: 'assets/web/5_back.png', fish: 'assets/web/5_03-물고기.png',
+        fishName: 'assets/web/5_03-물고기이름.png',
+        awakeMessage: 'assets/web/5_03-말풍선.png', levelMessage: 'assets/web/5_09-말풍선.png',
+        waitingMessage: 'assets/web/5_10-말풍선.png', bubble: 'assets/5_10-공기방울.png',
       },
     },
     // 아직 이름/번호가 정해지지 않은 3개. 실제 작업할 때 id·label·assets를 수정하세요.

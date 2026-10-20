@@ -3,9 +3,9 @@
   'use strict';
   const GUIDE_SETTINGS = {
     photos: [
-      'assets/Web page_intro-ment1.png',
-      'assets/Web page_intro-ment2.png',
-      'assets/Web page_intro-ment3.png',
+      'assets/web/Web page_intro-ment1.png',
+      'assets/web/Web page_intro-ment2.png',
+      'assets/web/Web page_intro-ment3.png',
     ],
     awaitTagIndex: 1,
     waterIndex: 2,
@@ -14,6 +14,7 @@
     waterGuideFadeMs: 600,  // 그 안내의 GIF·말풍선만 사라지는 시간
   };
   const PHOTO_WIDTHS = [70, 83, 72];
+  const PHOTO_SIZES = [[1024, 526], [1024, 425], [1024, 493]];
   const stage = document.getElementById('stage');
   const button = document.getElementById('homeStart');
   const logo = document.querySelector('#homeContent .home-logo');
@@ -24,15 +25,27 @@
   if (!stage || !button || !logo || !panel || !photo || !gif || !canvas) return;
   let phase = 'cover', photoIndex = 0, pendingId = null;
   let fadeTimer = null, hideTimer = null, fadeVersion = 0;
-  GUIDE_SETTINGS.photos.forEach(src => { const image = new Image(); image.src = src; });
+  let photoVersion = 0;
+  GUIDE_SETTINGS.photos.forEach(src => {
+    const image = new Image(); image.decoding = 'async'; image.src = src;
+    if (typeof image.decode === 'function') image.decode().catch(() => {});
+  });
   function setPhase(value) { phase = value; panel.dataset.phase = value; }
   function setPhoto(index) {
+    const version = ++photoVersion;
     photoIndex = index;
-    photo.src = GUIDE_SETTINGS.photos[index];
+    // 새 문구의 크기를 먼저 정하고 디코딩이 끝난 다음 표시해 중간 크기가 보이지 않게 합니다.
+    photo.hidden = true;
+    photo.style.width = `${PHOTO_WIDTHS[index] ?? 80}%`;
+    [photo.width, photo.height] = PHOTO_SIZES[index];
+    const source = GUIDE_SETTINGS.photos[index];
+    if (photo.getAttribute('src') !== source) photo.src = source;
     photo.alt = index === GUIDE_SETTINGS.awaitTagIndex ? '소녀에게 가까이 가주세요'
       : index === GUIDE_SETTINGS.waterIndex ? '어항에 물이 찰 수 있도록 휴대폰을 천천히 기울여주세요'
       : '빈 어항을 든 소녀 안내';
-    photo.style.width = `${PHOTO_WIDTHS[index] ?? 80}%`;
+    const showPhoto = () => { if (version === photoVersion) photo.hidden = false; };
+    if (typeof photo.decode === 'function') photo.decode().then(showPhoto, showPhoto);
+    else showPhoto();
   }
   function clearWaterFade() {
     fadeVersion++;
@@ -61,6 +74,7 @@
     }, GUIDE_SETTINGS.waterGuideHoldMs);
   }
   function resetGuide() {
+    photoVersion++;
     clearWaterFade();
     FishApp.setPouring(false);
     setPhase('cover'); pendingId = null;
@@ -69,9 +83,10 @@
   function openGuide() {
     if (stage.dataset.screen !== 'home' || phase !== 'cover') return;
     clearWaterFade();
-    logo.hidden = true; button.hidden = true; panel.hidden = false;
+    logo.hidden = true; button.hidden = true;
     setPhoto(0);
     setPhase(GUIDE_SETTINGS.awaitTagIndex === 0 ? 'await-tag' : 'guide');
+    panel.hidden = false;
   }
   function advance() {
     if (stage.dataset.screen !== 'home' || document.hidden) return;
@@ -92,8 +107,9 @@
     if (continuing) return true;
     FishApp.prepareWater(fishId);
     pendingId = fishId;
-    logo.hidden = true; button.hidden = true; panel.hidden = false;
+    logo.hidden = true; button.hidden = true;
     setPhoto(GUIDE_SETTINGS.waterIndex); setPhase('pouring');
+    panel.hidden = false;
     FishApp.setPouring(true);
     fadeWaterGuide();
     const url = new URL(location.href);

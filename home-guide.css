@@ -13,11 +13,12 @@
   position: absolute;
   left: 50%;
   top: 15%;
-  width: 90%;
+  width: 70%;
   height: auto;
   display: block;
   z-index: 0;
   transform: translateX(-50%);
+  scale: 1;
   animation: speechFloat 3.2s ease-in-out infinite;
 }
 
