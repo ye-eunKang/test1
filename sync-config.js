@@ -16,6 +16,11 @@
       fish05: {
         label: '5번 · 해포리고기',
         tdSignal: 'fish05',
+        // 물 배출량 0~100% = 프레임 0~133. 시간 재생/영상 탐색을 사용하지 않습니다.
+        waterFrames: {
+          prefix: 'assets/frames/water05/frame-', suffix: '.webp', digits: 3,
+          count: 134, width: 960, height: 720,
+        },
         display: {
           walk: 'assets/S1_walk.mp4',
           water: 'assets/S1_water.mp4',

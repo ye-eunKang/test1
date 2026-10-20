@@ -1,6 +1,11 @@
 /* 색·시간·영상 경로·물고기 목록은 이 파일에서 수정하세요. */
 window.FishConfig = {
   home: {
+    // 소녀 원본 GIF에서 추출한 59장. 색상·재생 속도는 여기서 변경하세요.
+    guideFrames: {
+      prefix: 'assets/frames/girl/frame-', suffix: '.webp', digits: 3,
+      count: 59, width: 556, height: 417, fps: 25, color: '#2abccf',
+    },
     fillLevel: .88,
     topColor: '#b8ffff', middleColor: '#88e9e7', bottomColor: '#4fd4d8',
     backColor: '#7adedd', wavePx: 8, waveSpeed: .7,

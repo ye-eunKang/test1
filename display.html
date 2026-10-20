@@ -8,10 +8,12 @@
   <link rel="stylesheet" href="display.css">
   <script src="sync-config.js" defer></script>
   <script src="shared/sync-client.js" defer></script>
+  <script src="shared/frame-sequence.js" defer></script>
   <script src="display.js" defer></script>
 </head>
 <body>
   <video id="displayVideo" muted playsinline preload="auto"></video>
+  <canvas id="waterSequence" width="960" height="720" hidden aria-label="어항에 물이 차는 장면" role="img"></canvas>
   <div id="displayGate"><button id="displayStart" type="button">디스플레이 시작하기</button></div>
   <p id="displayStatus" role="status"></p>
 </body>
