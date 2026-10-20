@@ -45,3 +45,40 @@ transform: translateX(-50%);
 
 /* 전역 CSS에 이미지 display:block이 있더라도 hidden을 확실히 적용 */
 #homeGuide[hidden], #homeContent [hidden] { display: none !important; }
+/* 부모 전체에 적용하던 투명도 효과 해제 */
+#homeGuide,
+#homeGuide.is-fading {
+  opacity: 1;
+  transition: none;
+  isolation: auto;
+}
+
+/* GIF 표시는 이전 방식으로 복원 */
+#homeGuideGif {
+  filter: brightness(0) saturate(100%)
+    invert(62%) sepia(45%) saturate(675%)
+    hue-rotate(139deg) brightness(93%) contrast(91%);
+
+  transform: none;
+  will-change: auto;
+  backface-visibility: visible;
+  -webkit-backface-visibility: visible;
+  animation: none;
+}
+
+/* 말풍선은 둥둥 뜨는 효과만 적용 */
+#homeGuidePhoto {
+  animation: speechFloat 3.2s ease-in-out infinite;
+}
+
+/* 3초 뒤 GIF와 말풍선을 각각 페이드 */
+#homeGuidePhoto,
+#homeGuideGif {
+  opacity: 1;
+  transition: opacity var(--water-guide-fade, 600ms) ease;
+}
+
+#homeGuide.is-fading #homeGuidePhoto,
+#homeGuide.is-fading #homeGuideGif {
+  opacity: 0;
+}
