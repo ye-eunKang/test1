@@ -7,7 +7,7 @@ window.FishConfig = {
     springStrength: 22, damping: 9, maxTiltDeg: 100,
     bubbleCount: 7, bubbleSpeed: 10,
     pourRate: .22,             // 물이 가장자리에 닿기 시작할 때의 기본 배출 속도
-    pourBoost: 1,2,              // 많이 기울여 넘치는 물이 많으면 배출이 빨라집니다.
+    pourBoost: 1.2,              // 많이 기울여 넘치는 물이 많으면 배출이 빨라집니다.
     pourCompleteLevel: 0,      // 물이 모두 빠지고 S1_water도 끝나면 다음 영상
   },
   common: {
