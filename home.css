@@ -82,3 +82,38 @@
     transform: translate(-50%, -10px);
   }
 }
+
+/* 말풍선 전체에 적용 */
+#homeGuidePhoto,
+.intro-one,
+.intro-two,
+.instruction,
+.awake,
+.level,
+.waiting {
+  animation:
+    fade .2s ease-out both,
+    speechFloat 3.2s ease-in-out infinite;
+}
+
+@keyframes speechFloat {
+  0%, 100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -5px;
+  }
+}
+
+/* 기기의 움직임 줄이기 설정 반영 */
+@media (prefers-reduced-motion: reduce) {
+  #homeGuidePhoto,
+  .intro-one,
+  .intro-two,
+  .instruction,
+  .awake,
+  .level,
+  .waiting {
+    animation: none;
+  }
+}
