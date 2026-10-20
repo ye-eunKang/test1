@@ -11,13 +11,15 @@ window.FishConfig = {
     pourCompleteLevel: 0,      // 물이 모두 빠지고 S1_water도 끝나면 다음 영상
   },
   common: {
-    finishWithButton: true,     // 시연용: 마지막 수평 감지 대신 물고기 보내기 버튼
+    finishTiltDeg: 20,         // 5_10: 이 각도 이상으로 기울이면 말풍선을 지웁니다.
+    finishTiltHoldMs: 200,     // 센서 잔떨림을 거르는 짧은 유지 시간
+    finishReturnMs: 3000,      // 말풍선이 사라진 뒤 홈으로 돌아가기까지의 시간
     rotationSeconds: 30,        // 방사형 배경 한 바퀴 (느리고 부드럽게 계속 회전)
     levelTolerance: 12,         // 처음 수평 안내 단계의 허용 오차(도)
     levelHoldMs: 900,           // 수평을 유지하면 기다림 화면으로 진입
-    stillTolerance: 2,          // 마지막 기다림: 이 범위 안의 잔떨림은 무시
-    stillHoldMs: 3000,          // 기울기 변화가 없으면 영상 표시
-    sensorGapMs: 700,           // 센서 신호가 끊기면 3초 측정 초기화
+    stillTolerance: 2,          // 다른 게임의 정지 감지용 값
+    stillHoldMs: 3000,          // 다른 게임용. 이번 홈 복귀 시간은 finishReturnMs에서 조정
+    sensorGapMs: 700,           // 센서가 이 시간 이상 끊기면 수평·기울기 판정을 다시 시작
   },
   interactions: [
     {
