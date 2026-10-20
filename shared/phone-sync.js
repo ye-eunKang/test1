@@ -81,7 +81,7 @@
     }, FishConfig.common.sensorGapMs);
     const at = sample.receivedAt;
     const changed = lastProgress === null || Math.abs(sample.progress - lastProgress) >= .001;
-    const due = at - lastProgressAt >= 40;
+    const due = at - lastProgressAt >= 80;
     if (sample.active !== lastPour || (changed && (due || sample.complete))) {
       if (client.event('pour',{active:sample.active,progress:sample.progress,rate:sample.rate})) {
         lastPour = sample.active; lastProgress = sample.progress; lastProgressAt = at;
