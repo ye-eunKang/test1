@@ -390,3 +390,12 @@ button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   #reveal #rays, #fish, #endingFish { animation: none; }
 }
+/* 폰에서 웹 화면 전체 채우기 */
+@media (pointer: coarse) {
+  #stage {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    aspect-ratio: auto;
+  }
+}
