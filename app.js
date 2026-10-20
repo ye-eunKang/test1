@@ -476,6 +476,7 @@
     hasInteraction: (id) => definitions.has(id), registerInteraction, startInteraction, showHome, initialize,
     previewScene, motion,
     prepareWater(id) { water?.reset(); prepareArtwork(id); },
+    restoreWaterProgress(progress) { water?.restoreProgress(progress); },
     setPouring(enabled) { water?.setPouring(enabled); },
     getWaterState: () => water?.getPourState(),
     presentReveal(id) { if (activeId !== id || !run?.active) startInteraction(id); return reveal(); },

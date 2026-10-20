@@ -71,7 +71,8 @@
         bubbleCount: 7,
         bubbleSpeed: 10,
         pourRate: .22,
-        pourCompleteLevel: .35,
+        pourBoost: 3,
+        pourCompleteLevel: 0,
         ...options,
       };
       this.initialFill = clamp(this.options.fillLevel, 0, .98);
@@ -127,12 +128,22 @@
       if (!enabled) this.spilling = false;
     }
     getPourState() {
+      const goal = Math.max(.001, this.initialFill - this.options.pourCompleteLevel);
       return { fillLevel: this.options.fillLevel, initialFill: this.initialFill,
         spilling: !!this.spilling, complete: !!this.pourComplete,
-        poured: this.initialFill - this.options.fillLevel };
+        poured: this.initialFill - this.options.fillLevel,
+        progress: clamp((this.initialFill - this.options.fillLevel) / goal, 0, 1),
+        rate: (this.pourSpeed || 0) / goal };
+    }
+    restoreProgress(progress) {
+      if (!Number.isFinite(progress)) return;
+      const goal = this.initialFill - this.options.pourCompleteLevel;
+      this.setFillLevel(Math.min(this.options.fillLevel, this.initialFill - clamp(progress,0,1) * goal));
+      if (progress >= 1) this.pourComplete = true;
     }
     updatePour(dt, timestamp) {
       this.spilling = false;
+      this.pourSpeed = 0;
       if (!this.pourEnabled || !this.width || !this.height) return;
       const fresh = this.manualTilt || (this.lastSensorAt !== null
         && timestamp - this.lastSensorAt < 700 && this.gravityAvailable);
@@ -144,10 +155,17 @@
           / (this.width * this.height);
         const excess = Math.max(0, this.options.fillLevel - capacity);
         if (excess > .00001 && dt > 0) {
-          this.setFillLevel(this.options.fillLevel - Math.min(excess, this.options.pourRate * dt));
+          const before = this.options.fillLevel;
+          const boost = 1 + Math.min(this.options.pourBoost, excess * 4);
+          this.setFillLevel(before - Math.min(excess, this.options.pourRate * boost * dt));
+          // 가장자리의 1% 미만 잔량은 비워서 마지막 프레임에서 멈추지 않게 합니다.
+          if (this.options.fillLevel <= this.options.pourCompleteLevel + .01) {
+            this.setFillLevel(this.options.pourCompleteLevel);
+            this.pourComplete = true;
+          }
+          this.pourSpeed = (before - this.options.fillLevel) / dt;
           this.spilling = true;
         }
-        if (this.options.fillLevel <= this.options.pourCompleteLevel) this.pourComplete = true;
       }
       this.canvas.dispatchEvent(new CustomEvent('water:progress', { detail: {
         ...this.getPourState(), receivedAt: timestamp,
@@ -158,6 +176,7 @@
       this.options.fillLevel = this.initialFill;
       this.pourEnabled = false;
       this.pourComplete = false;
+      this.pourSpeed = 0;
       this.spilling = false;
       this.lastSensorAt = null;
       this.manualTilt = false;

@@ -4,6 +4,7 @@
   const settings = window.FishSyncConfig;
   let client = null, pendingTag = false, lastPhase = '', lastPour = null, pourSent = false;
   let tiltWatch = null, applying = false;
+  let lastProgress = null, lastProgressAt = -Infinity;
   const note = document.getElementById('syncStatus');
   function status(text = '') { note.textContent = text; note.hidden = !text; }
   function apply(state) {
@@ -12,7 +13,10 @@
     }
     if (state.phase === 'idle' && pendingTag) return;
     pendingTag = false;
-    if (state.phase === lastPhase) return;
+    if (state.phase === lastPhase) {
+      if (['water-ready','water-playing'].includes(state.phase)) FishApp.restoreWaterProgress(state.waterProgress);
+      return;
+    }
     const previous = lastPhase;
     lastPhase = state.phase; lastPour = null;
     if (!['water-ready','water-playing'].includes(state.phase)) clearTimeout(tiltWatch);
@@ -45,14 +49,19 @@
           break;
       }
     } finally { applying = false; }
+    if (['water-ready','water-playing'].includes(state.phase)) FishApp.restoreWaterProgress(state.waterProgress);
   }
   function begin(fish) {
     if (!settings.fish[fish]) { status('이 물고기의 아이패드 영상 설정을 확인해주세요.'); return; }
     client?.stop(); clearTimeout(tiltWatch);
     pendingTag = true; lastPhase = ''; lastPour = null; pourSent = false;
+    lastProgress = null; lastProgressAt = -Infinity;
     status('아이패드 연결을 확인하고 있어요.');
     client = new ExhibitClient({role:'phone',fish,onState:apply,
-      onStatus(online) { if (online) status(); else { status('연결을 다시 확인하고 있어요.'); lastPour = null; pourSent = false; } },
+      onStatus(online) { if (online) status(); else {
+        status('연결을 다시 확인하고 있어요.'); lastPour = null; pourSent = false;
+        lastProgress = null; lastProgressAt = -Infinity;
+      } },
       onError(error) {
         if (error === 'busy') { pendingTag = false; client?.stop(); client = null; HomeGuide.reset(); }
         status(error === 'busy' ? '다른 관객이 진행 중이에요. 잠시 기다려주세요.' : '아이패드 연결 설정을 확인해주세요.');
@@ -70,8 +79,15 @@
     tiltWatch = setTimeout(() => {
       client?.event('pour',{active:false}); lastPour = null;
     }, FishConfig.common.sensorGapMs);
-    if (sample.active !== lastPour) { client.event('pour',{active:sample.active}); lastPour = sample.active; }
-    // 각도가 아니라 실제로 줄어든 물의 양으로 판단합니다. 영상 종료는 iPad에서 확인합니다.
+    const at = sample.receivedAt;
+    const changed = lastProgress === null || Math.abs(sample.progress - lastProgress) >= .001;
+    const due = at - lastProgressAt >= 80;
+    if (sample.active !== lastPour || (changed && (due || sample.complete))) {
+      if (client.event('pour',{active:sample.active,progress:sample.progress,rate:sample.rate})) {
+        lastPour = sample.active; lastProgress = sample.progress; lastProgressAt = at;
+      }
+    }
+    // 물의 양이 영상의 진행률이 됩니다. 마지막 프레임 종료는 iPad에서 확인합니다.
     if (sample.complete && !pourSent) pourSent = client.event('pour-complete');
   });
   window.addEventListener('fish:game-complete', () => emit('game-complete'));
@@ -86,6 +102,7 @@
     if (applying) return;
     if (client && client.state?.owner === client.clientId) client.event('reset');
     client?.stop(); client = null; clearTimeout(tiltWatch); lastPhase = ''; pendingTag = false; pourSent = false;
+    lastProgress = null; lastProgressAt = -Infinity;
     status();
   });
   window.PhoneSync = {isActive:fish => !!client && client.fish === fish,

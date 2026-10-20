@@ -54,13 +54,13 @@ function createExhibitServer(options = {}) {
   function roomFor(fish) {
     if (!rooms.has(fish)) rooms.set(fish, {fish, phase:'idle', playing:false, session:null, owner:null,
       revision:0, returnAt:null, resetTimer:null, disconnectTimer:null, display:null,
-      pourComplete:false, waterEnded:false});
+      pourComplete:false, waterEnded:false, waterProgress:null, waterRate:0});
     return rooms.get(fish);
   }
   function send(ws, data) { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data)); }
   function snapshot(room) {
-    const {fish,phase,playing,session,owner,revision,returnAt,pourComplete,waterEnded} = room;
-    return {type:'state',fish,phase,playing,session,owner,revision,returnAt,pourComplete,waterEnded};
+    const {fish,phase,playing,session,owner,revision,returnAt,pourComplete,waterEnded,waterProgress,waterRate} = room;
+    return {type:'state',fish,phase,playing,session,owner,revision,returnAt,pourComplete,waterEnded,waterProgress,waterRate};
   }
   function broadcast(room) {
     room.revision++;
@@ -69,7 +69,7 @@ function createExhibitServer(options = {}) {
   function reset(room) {
     clearTimeout(room.resetTimer); clearTimeout(room.disconnectTimer);
     Object.assign(room, {phase:'idle', playing:false, session:null, owner:null, returnAt:null,
-      resetTimer:null, disconnectTimer:null, pourComplete:false, waterEnded:false});
+      resetTimer:null, disconnectTimer:null, pourComplete:false, waterEnded:false, waterProgress:null, waterRate:0});
     broadcast(room);
   }
   function transition(room, phase, playing = false) { room.phase = phase; room.playing = playing; broadcast(room); }
@@ -133,9 +133,25 @@ function createExhibitServer(options = {}) {
         if (room.owner !== ws.clientId) return;
         if (msg.name === 'reset') { reset(room); return; }
         if (msg.name === 'pour' && ['water-ready','water-playing'].includes(room.phase)) {
+          // 새로운 폰은 물의 실제 배출 비율을 보냅니다. 이전 폰 코드는 재생/정지 방식으로 동작합니다.
+          if (Number.isFinite(msg.progress)) {
+            const progress = Math.max(0,Math.min(1,msg.progress));
+            if (room.waterProgress !== null && progress + .00001 < room.waterProgress) return;
+            const rate = Number.isFinite(msg.rate) ? Math.max(0,Math.min(4,msg.rate)) : 0;
+            const playing = !room.waterEnded && (msg.active === true || progress >= 1);
+            const changed = room.waterProgress !== progress || room.waterRate !== rate || room.playing !== playing;
+            room.waterProgress = progress; room.waterRate = rate;
+            if (progress >= 1) room.pourComplete = true;
+            room.playing = playing;
+            if (progress > 0) room.phase = 'water-playing';
+            if (room.pourComplete && room.waterEnded) transition(room,'main-playing',true);
+            else if (changed) broadcast(room);
+            return;
+          }
           const playing = !room.waterEnded && (msg.active === true || room.pourComplete);
           if (room.playing !== playing) transition(room, playing ? 'water-playing' : room.phase, playing);
-        } else if (msg.name === 'pour-complete' && room.phase === 'water-playing' && !room.pourComplete) {
+        } else if (msg.name === 'pour-complete' && room.phase === 'water-playing' && !room.pourComplete
+          && (room.waterProgress === null || room.waterProgress >= 1)) {
           room.pourComplete = true;
           if (room.waterEnded) transition(room,'main-playing',true);
           else { room.playing = true; broadcast(room); }
@@ -153,6 +169,7 @@ function createExhibitServer(options = {}) {
         // 같은 물고기 화면의 실제 재생 창에서 종료를 받습니다.
         // 다른 탭을 열어도 막히지 않으며, 세션·단계 검사로 중복 전환을 막습니다.
         if (msg.clip === 'water' && msg.stage === 'water-playing' && room.phase === 'water-playing' && !room.waterEnded) {
+          if (room.waterProgress !== null && room.waterProgress < 1) return;
           room.waterEnded = true;
           if (room.pourComplete) transition(room,'main-playing',true);
           else { room.playing = false; broadcast(room); }
