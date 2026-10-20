@@ -10,8 +10,8 @@
     awaitTagIndex: 1,
     waterIndex: 2,
     previewFishId: 'fish05',
-    waterGuideHoldMs: 3000, // 기울이기 안내를 표시하는 시간
-    waterGuideFadeMs: 600,  // GIF와 말풍선이 함께 투명해지는 시간
+    waterGuideHoldMs: 3000, // NFC 후 기울이기 안내에서만 대기하는 시간
+    waterGuideFadeMs: 600,  // 그 안내의 GIF·말풍선만 사라지는 시간
   };
   const PHOTO_WIDTHS = [70, 83, 72];
   const stage = document.getElementById('stage');
@@ -23,8 +23,7 @@
   const canvas = document.getElementById('homeWater');
   if (!stage || !button || !logo || !panel || !photo || !gif || !canvas) return;
   let phase = 'cover', photoIndex = 0, pendingId = null;
-  let fadeTimer = null, hideTimer = null;
-  panel.style.setProperty('--water-guide-fade', `${GUIDE_SETTINGS.waterGuideFadeMs}ms`);
+  let fadeTimer = null, hideTimer = null, fadeVersion = 0;
   GUIDE_SETTINGS.photos.forEach(src => { const image = new Image(); image.src = src; });
   function setPhase(value) { phase = value; panel.dataset.phase = value; }
   function setPhoto(index) {
@@ -36,17 +35,28 @@
     photo.style.width = `${PHOTO_WIDTHS[index] ?? 80}%`;
   }
   function clearWaterFade() {
+    fadeVersion++;
     clearTimeout(fadeTimer); clearTimeout(hideTimer);
     fadeTimer = hideTimer = null;
+    panel.style.removeProperty('--water-guide-fade');
     panel.classList.remove('is-fading');
+  }
+  function isWaterGuide() {
+    return phase === 'pouring' && photoIndex === GUIDE_SETTINGS.waterIndex
+      && pendingId !== null && stage.dataset.screen === 'home';
   }
   function fadeWaterGuide() {
     clearWaterFade();
+    if (!isWaterGuide()) return;
+    const version = fadeVersion;
+    panel.style.setProperty('--water-guide-fade', `${GUIDE_SETTINGS.waterGuideFadeMs}ms`);
     fadeTimer = setTimeout(() => {
-      if (phase !== 'pouring' || stage.dataset.screen !== 'home') return;
+      if (version !== fadeVersion || !isWaterGuide()) return;
       panel.classList.add('is-fading');
       hideTimer = setTimeout(() => {
-        if (phase === 'pouring' && stage.dataset.screen === 'home') panel.hidden = true;
+        if (version !== fadeVersion || !isWaterGuide()) return;
+        panel.hidden = true;
+        clearWaterFade();
       }, GUIDE_SETTINGS.waterGuideFadeMs);
     }, GUIDE_SETTINGS.waterGuideHoldMs);
   }
@@ -58,6 +68,7 @@
   }
   function openGuide() {
     if (stage.dataset.screen !== 'home' || phase !== 'cover') return;
+    clearWaterFade();
     logo.hidden = true; button.hidden = true; panel.hidden = false;
     setPhoto(0);
     setPhase(GUIDE_SETTINGS.awaitTagIndex === 0 ? 'await-tag' : 'guide');
