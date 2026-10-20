@@ -9,17 +9,7 @@
 #homeGuide[data-phase="pouring"] .touch-hint { display: none; }
 
 /* 말풍선별 폭은 home-guide.js의 PHOTO_WIDTHS에서 조정합니다. */
-#homeGuidePhoto {
-  position: absolute;
-  left: 50%;
-  top: 15%;
-  width: 90%;
-  height: auto;
-  display: block;
-  z-index: 0;
-  transform: translateX(-50%);
-  animation: speechFloat 3.2s ease-in-out infinite;
-}
+
 
 /* 소녀 GIF: 기존 위치와 색상을 유지합니다. */
 #homeGuideGif {
@@ -41,14 +31,14 @@
 }
 
 /* 처음 안내 / NFC 대기: 대기 타이머도, 사라지거나 다시 밝아지는 전환도 없습니다. */
-#homeGuidePhoto,
+
 #homeGuideGif {
   opacity: 1;
   transition: none;
 }
 
 /* NFC 후 '휴대폰을 천천히 기울여주세요' 안내에서만 투명도 전환을 허용합니다. */
-#homeGuide[data-phase="pouring"] #homeGuidePhoto,
+
 #homeGuide[data-phase="pouring"] #homeGuideGif {
   transition: opacity var(--water-guide-fade, 0ms) ease;
 }
@@ -58,6 +48,4 @@
 }
 
 #homeGuide[hidden], #homeContent [hidden] { display: none !important; }
-@media (prefers-reduced-motion: reduce) {
-  #homeGuidePhoto { animation: none; }
-}
+
