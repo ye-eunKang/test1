@@ -56,7 +56,8 @@
   class WaterBackground {
     constructor(canvas, options = {}) {
       this.canvas = canvas;
-      this.ctx = canvas.getContext('2d');
+      // 흰색 상단까지 매번 그리므로 배경 Canvas에는 투명도 합성이 필요 없습니다.
+      this.ctx = canvas.getContext('2d', { alpha: false });
       this.options = {
         fillLevel: .88,
         topColor: '#b8ffff',
@@ -104,13 +105,26 @@
     resize() {
       const bounds = this.canvas.getBoundingClientRect();
       if (!bounds.width || !bounds.height) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const pixelWidth = Math.round(bounds.width * dpr);
+      const pixelHeight = Math.round(bounds.height * dpr);
+      const changed = this.width !== bounds.width || this.height !== bounds.height
+        || this.dpr !== dpr || this.canvas.width !== pixelWidth || this.canvas.height !== pixelHeight;
       this.width = bounds.width;
       this.height = bounds.height;
-      this.dpr = Math.min(window.devicePixelRatio || 1, 2);
-      this.canvas.width = Math.round(this.width * this.dpr);
-      this.canvas.height = Math.round(this.height * this.dpr);
+      this.dpr = dpr;
+      if (!changed) return;
+      // 같은 크기를 다시 지정해도 Canvas가 지워지므로 실제 변경 때만 갱신합니다.
+      if (this.canvas.width !== pixelWidth) this.canvas.width = pixelWidth;
+      if (this.canvas.height !== pixelHeight) this.canvas.height = pixelHeight;
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
       this.bubbles = [];
+      // 주소창 등의 크기 변경 뒤 빈 Canvas가 한 프레임 노출되지 않게 즉시 복원합니다.
+      if (Number.isFinite(this.waveAmplitude)) this.draw(0);
+      else {
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+      }
     }
 
     // PC에서 각도를 전달할 수 있습니다. 예: water.setTilt(25)
@@ -189,12 +203,16 @@
       this.waveAmplitude = this.options.wavePx;
       this.bubbles = [];
       this.lastFrameTime = null;
+      this.lastDrawAt = null;
+      this.drawElapsed = 0;
     }
     start() {
       this.enabled = true;
       if (this.running || document.hidden) return;
       this.running = true;
       this.lastFrameTime = null;
+      this.lastDrawAt = null;
+      this.drawElapsed = 0;
       this.frameId = requestAnimationFrame(this.onFrame);
     }
     stop() {
@@ -259,7 +277,14 @@
       const wanted = (base + motion) * scale;
       this.waveAmplitude += (wanted - this.waveAmplitude) * (1 - Math.exp(-dt * 5));
       this.updatePour(dt, timestamp);
-      this.draw(dt);
+      // 센서·물의 양은 매 프레임 계산하고, 배경 그림만 초당 최대 30번 갱신합니다.
+      // GIF는 원본 <img>에서 계속 재생되며 여기서 다시 만들거나 덧그리지 않습니다.
+      this.drawElapsed += dt;
+      if (this.lastDrawAt === null || timestamp - this.lastDrawAt >= 1000 / 30 - .5) {
+        this.draw(this.drawElapsed);
+        this.drawElapsed = 0;
+        this.lastDrawAt = timestamp;
+      }
       this.frameId = requestAnimationFrame(this.onFrame);
     }
 
@@ -321,7 +346,7 @@
       const ny = Math.cos(this.angle);
       const offset = findWaterline(w, h, nx, ny, this.options.fillLevel);
       this.waterline = offset;
-      ctx.clearRect(0, 0, w, h);
+      // 불투명 흰색으로 전체를 덮으므로 투명하게 지우는 clearRect는 필요 없습니다.
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, w, h);
       if (this.options.fillLevel <= 0) return;
