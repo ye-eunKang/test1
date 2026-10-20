@@ -20,15 +20,16 @@
   height: auto;
   display: block;
   z-index: 1;
- /* filter: brightness(0) saturate(100%)
+  filter: brightness(0) saturate(100%)
     invert(62%) sepia(45%) saturate(675%)
     hue-rotate(139deg) brightness(93%) contrast(91%);
-  */
-    transform: none;
+  transform: none;
   will-change: auto;
   backface-visibility: visible;
   -webkit-backface-visibility: visible;
   animation: none;
+    filter: none !important;
+
 }
 
 /* 처음 안내 / NFC 대기: 대기 타이머도, 사라지거나 다시 밝아지는 전환도 없습니다. */
