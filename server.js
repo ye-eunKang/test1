@@ -156,7 +156,11 @@ function createExhibitServer(options = {}) {
           if (room.waterEnded) transition(room,'main-playing',true);
           else { room.playing = true; broadcast(room); }
         }
-        else if (msg.name === 'game-complete' && room.phase === 'game') transition(room,'ending-playing',true);
+        else if (msg.name === 'game-complete' && room.phase === 'game') {
+          // 별도 게임 영상이 있는 물고기는 게임 영상 → 엔딩 영상 순서로 재생합니다.
+          const phase = config.fish[room.fish].display.game ? 'game-playing' : 'ending-playing';
+          transition(room,phase,true);
+        }
         else if (msg.name === 'waiting' && room.phase === 'reveal') transition(room,'waiting');
         else if (msg.name === 'swim-started' && room.phase === 'waiting') transition(room,'swimming');
         else if ((msg.name === 'finish' && ['waiting','swimming'].includes(room.phase))
@@ -174,8 +178,9 @@ function createExhibitServer(options = {}) {
           if (room.pourComplete) transition(room,'main-playing',true);
           else { room.playing = false; broadcast(room); }
         }
-        else if (msg.clip === 'main' && room.phase === 'main-playing') transition(room,'game');
-        else if (msg.clip === 'ending' && room.phase === 'ending-playing') transition(room,'reveal');
+        else if (msg.clip === 'main' && msg.stage === 'main-playing' && room.phase === 'main-playing') transition(room,'game');
+        else if (msg.clip === 'game' && msg.stage === 'game-playing' && room.phase === 'game-playing') transition(room,'ending-playing',true);
+        else if (msg.clip === 'ending' && msg.stage === 'ending-playing' && room.phase === 'ending-playing') transition(room,'reveal');
       }
     });
     ws.on('close', () => {

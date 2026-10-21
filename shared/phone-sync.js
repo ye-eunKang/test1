@@ -37,6 +37,7 @@
           HomeGuide.finishPour(state.fish);
           break;
         case 'game': FishApp.startInteraction(state.fish); break;
+        case 'game-playing':
         case 'ending-playing':
           if (FishApp.getState().activeId !== state.fish) FishApp.startInteraction(state.fish);
           FishApp.pauseGame(); break;

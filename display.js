@@ -28,7 +28,7 @@
   if (profile.display.gameLayers?.foreground) gameGraphic.src = profile.display.gameLayers.foreground;
   const clamp = (value,min,max) => Math.max(min,Math.min(max,value));
   function applyGameLayers(clip) {
-    const layers = clip === 'ending' ? profile.display.gameLayers : null;
+    const layers = clip === 'game' ? profile.display.gameLayers : null;
     const active = !!(layers?.background && layers?.foreground);
     if (active) {
       stage.dataset.layered = 'true';
@@ -127,7 +127,8 @@
     if (state.phase === 'water-playing') return {clip:'water',play:state.playing && !state.waterEnded,
       waterSync:Number.isFinite(state.waterProgress)};
     if (state.phase === 'main-playing') return {clip:'main',play:true};
-    if (state.phase === 'game') return {clip:'ending',play:false,position:'start'};
+    if (state.phase === 'game') return {clip:profile.display.game ? 'game' : 'ending',play:false,position:'start'};
+    if (state.phase === 'game-playing') return {clip:'game',play:true};
     if (state.phase === 'ending-playing') return {clip:'ending',play:true};
     return {clip:'ending',play:false,position:'end'};
   }
@@ -153,6 +154,7 @@
       const clip = media.clip;
       if ((clip === 'water' && desired.phase === 'water-playing')
         || (clip === 'main' && desired.phase === 'main-playing')
+        || (clip === 'game' && desired.phase === 'game-playing')
         || (clip === 'ending' && desired.phase === 'ending-playing')) {
         sendEnded(clip,desired);
       }
@@ -207,6 +209,7 @@
     if (video.ended && desired?.session === state.session && desired?.phase === state.phase
       && ((currentClip === 'water' && state.phase === 'water-playing')
       || (currentClip === 'main' && state.phase === 'main-playing')
+      || (currentClip === 'game' && state.phase === 'game-playing')
       || (currentClip === 'ending' && state.phase === 'ending-playing'))
       && (currentClip !== 'water' || !Number.isFinite(state.waterProgress) || state.waterProgress >= 1)) {
       const key = `${state.session}:${state.phase}:${currentClip}`;

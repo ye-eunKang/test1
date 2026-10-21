@@ -19,7 +19,9 @@
           walk: 'assets/S1_walk.mp4', water: 'assets/S1_water.mp4',
           main: 'assets/S1_main.mp4',
           // 접시를 옮기는 동안 첫 프레임에서 대기하고, 3개 성공 후 한 번 재생합니다.
-          ending: 'assets/S1_gamevideo_downgrade.mp4',
+          game: 'assets/S1_gamevideo_downgrade.mp4',
+          // 게임 MP4 종료 후 재생하며, 이 영상까지 끝나야 폰의 물고기가 등장합니다.
+          ending: 'assets/S1_ending.mp4',
           gameLayers: {
             background: 'assets/S1_game_back.gif',
             foreground: 'assets/S1_game_back_graphic.gif',
