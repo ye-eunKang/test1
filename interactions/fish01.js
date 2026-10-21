@@ -6,7 +6,7 @@ FishApp.registerInteraction('fish01', {
     const $ = id => root.querySelector(`#${id}`);
     const cfg = flow.config.game, assets = flow.config.assets;
     const stack = [...$('dishStack').querySelectorAll('img')];
-    const moving = $('dishMoving'), tray = $('dishTray'), shadow = $('dishShadow');
+    const moving = $('dishMoving'), tray = $('dishTray'), platform = $('dishPlatform');
     let scope = null, count = 0, busy = false, introStep = 0;
     let plate = null, drag = null, pickup = null, ready = null, feedbackVersion = 0, keyboardSince = null;
     const clamp = (value,min,max) => Math.max(min,Math.min(max,value));
@@ -18,9 +18,20 @@ FishApp.registerInteraction('fish01', {
       image.decoding = 'async';
       if (image.getAttribute('src') !== src) image.src = src;
     }
+    function floor(r) {
+      const rect = platform.getBoundingClientRect();
+      const height = rect.height || r.width*(platform.height || 633)/(platform.width || 2048);
+      const top = rect.height ? rect.top-r.top : r.height-height;
+      return clamp((top+height*(cfg.platformSurfaceY ?? 395/633)-(cfg.platformInsetPx ?? 2))/r.height,.5,.995);
+    }
+    function positionStack() {
+      const r = bounds(); if (!r) return;
+      const ground = floor(r);
+      stack.forEach((image,index) => {image.style.bottom = `${(1-ground+cfg.plateLifts[index])*100}%`;});
+    }
     function layout(index, r) {
       const width = cfg.plateWidths[index];
-      return {x:.5, y:cfg.floor-cfg.plateLifts[index]-width*r.width*cfg.plateRatios[index]/r.height/2, width};
+      return {x:.5, y:floor(r)-cfg.plateLifts[index]-width*r.width*cfg.plateRatios[index]/r.height/2, width};
     }
     function position() {
       if (!plate) return;
@@ -32,7 +43,7 @@ FishApp.registerInteraction('fish01', {
       moving.style.setProperty('--dish-x',`${plate.x*r.width}px`);
       moving.style.setProperty('--dish-y',`${plate.y*r.height}px`);
       const target = layout(plate.index,r);
-      shadow.dataset.near = String(Math.abs(plate.x-target.x) <= .18 && Math.abs(plate.y-target.y) <= .075);
+      platform.dataset.near = String(Math.abs(plate.x-target.x) <= .18 && Math.abs(plate.y-target.y) <= .075);
     }
     function instruction() {
       if (count >= 3) return '';
@@ -67,30 +78,28 @@ FishApp.registerInteraction('fish01', {
     function reset() {
       clearPickup(); takeDrag(); count = 0; busy = false; plate = null; keyboardSince = null; introStep = 0; feedbackVersion++;
       root.dataset.step = 'intro'; root.dataset.count = '0';
-      root.style.setProperty('--dish-ground',`${cfg.floor*100}%`);
-      root.style.setProperty('--dish-base-shadow',`${cfg.plateWidths[0]*90}%`);
       tray.style.setProperty('--dish-hold-time',`${cfg.pickupHoldMs ?? 450}ms`);
-      shadow.dataset.near = 'false';
+      platform.dataset.near = 'false';
       $('dishIntro').hidden = false; $('dishGame').hidden = true;
       root.querySelector('.intro-one').hidden = false; root.querySelector('.intro-two').hidden = true;
       imageSource(root.querySelector('.intro-one'),assets.introOne);
       imageSource(root.querySelector('.intro-two'),assets.introTwo);
       imageSource(root.querySelector('.instruction'),assets.instruction);
       imageSource(tray.querySelector('img'),assets.dishes);
-      imageSource($('dishPlaceHint'),assets.placeHint);
+      imageSource(platform,assets.platform);
       stack.forEach((image,index) => {
         image.hidden = true; imageSource(image,assets.plates[index]);
         image.style.width = `${cfg.plateWidths[index]*100}%`;
-        image.style.bottom = `${(1-cfg.floor+cfg.plateLifts[index])*100}%`;
       });
+      positionStack();
       moving.hidden = true; moving.dataset.settling = 'false'; moving.dataset.dragging = 'false';
       tray.disabled = false; tray.setAttribute('aria-label','그릇 사진을 꾹 누른 채 첫 번째 접시를 아래로 천천히 옮기기');
-      $('dishPlaceHint').hidden = false; $('dishFeedback').textContent = instruction();
+      $('dishFeedback').textContent = instruction();
       $('dishCount').textContent = '접시 0개 / 3개';
     }
     function preload() {
       if (ready) return ready;
-      const sources = [assets.dishes,assets.placeHint,...assets.plates];
+      const sources = [assets.dishes,assets.platform,...assets.plates];
       ready = Promise.all(sources.map(src => {
         const image = new Image(); image.decoding = 'async'; image.src = src;
         if (typeof image.decode === 'function') return image.decode();
@@ -101,7 +110,8 @@ FishApp.registerInteraction('fish01', {
     }
     function game() {
       $('dishIntro').hidden = true; $('dishGame').hidden = false; root.dataset.step = 'game';
-      flow.announce('그릇 사진을 꾹 누른 채, 손을 떼지 않고 아래 그림자까지 천천히 끌어 놓아주세요.');
+      positionStack();
+      flow.announce('그릇 사진을 꾹 누른 채, 손을 떼지 않고 아래 받침 위까지 천천히 끌어 놓아주세요.');
     }
     async function pick(record, current) {
       if (!current.active || pickup !== record) return;
@@ -124,11 +134,11 @@ FishApp.registerInteraction('fish01', {
       keyboardSince = null; clearPickup(true);
       imageSource($('dishMovingImage'),assets.plates[count]);
       moving.dataset.settling = 'false'; position(); moving.hidden = false; busy = false;
-      moving.setAttribute('aria-label',`${count+1}번째 접시를 아래 그림자까지 천천히 끌어 놓기`);
+      moving.setAttribute('aria-label',`${count+1}번째 접시를 아래 받침 위까지 천천히 끌어 놓기`);
       if (record.kind === 'key') {tray.disabled = true; moving.focus({preventScroll:true});}
       else beginDrag(record,tray);
       feedback('');
-      flow.announce('접시를 잡았어요. 아래 그림자까지 천천히 옮겨주세요.');
+      flow.announce('접시를 잡았어요. 아래 받침 위까지 천천히 옮겨주세요.');
     }
     function queuePickup(record) {
       if (!scope?.active || root.dataset.step !== 'game' || busy || plate || pickup || count >= 3) return;
@@ -161,7 +171,7 @@ FishApp.registerInteraction('fish01', {
       moving.dataset.settling = 'true'; Object.assign(plate,plate.origin); position(); feedback(text);
       if (await current.delay(cfg.settleMs)) {
         moving.dataset.settling = 'false'; moving.hidden = true; plate = null;
-        shadow.dataset.near = 'false'; busy = false; tray.disabled = false;
+        platform.dataset.near = 'false'; busy = false; tray.disabled = false;
       }
     }
     function beginDrag(record, capture) {
@@ -211,7 +221,7 @@ FishApp.registerInteraction('fish01', {
       const r = bounds(); if (!r) return;
       const target = layout(count,r);
       if (Math.abs(plate.x-target.x) > .18 || Math.abs(plate.y-target.y) > .075) {
-        returnPlate('아래 그림자가 있는 곳에 접시를 놓아주세요.'); return;
+        returnPlate('아래 받침 위에 접시를 놓아주세요.'); return;
       }
       if (record.unsafe || performance.now()-record.started < cfg.minCarryMs) {
         returnPlate('조금 더 천천히 옮겨주세요. 지금 접시만 다시 해보면 돼요.'); return;
@@ -221,7 +231,7 @@ FishApp.registerInteraction('fish01', {
       if (!await current.delay(cfg.settleMs)) return;
       stack[count].hidden = false; count++; plate = null; keyboardSince = null;
       moving.hidden = true; moving.dataset.settling = 'false';
-      root.dataset.count = String(count); shadow.dataset.near = 'false'; $('dishPlaceHint').hidden = count > 0;
+      root.dataset.count = String(count); platform.dataset.near = 'false';
       $('dishCount').textContent = `접시 ${count}개 / 3개`;
       flow.announce(`${count}개의 접시를 안전하게 옮겼어요.`);
       if (count === 3) {
@@ -274,7 +284,8 @@ FishApp.registerInteraction('fish01', {
         scope.listen(moving,'keydown',key);
         scope.listen(document,'visibilitychange',() => {if (document.hidden) cancel({});});
         scope.listen(window,'blur',() => cancel({}));
-        scope.listen(window,'resize',position);
+        scope.listen(window,'resize',() => {positionStack(); position();});
+        scope.listen(platform,'load',() => {positionStack(); position();});
       },
       stop() { clearPickup(); takeDrag(); scope?.abort(); scope = null; },
       reset,

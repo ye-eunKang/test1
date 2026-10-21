@@ -31,7 +31,8 @@ window.FishConfig = {
         maxSpeed: .95,        // 초당 화면 높이의 0.95배. 클수록 빠른 이동을 허용합니다.
         speedGraceMs: 140,    // 잠깐의 손 떨림은 허용합니다.
         settleMs: 380, successPauseMs: 650,
-        floor: .94,
+        platformSurfaceY: 395/633, // 받침 이미지 윗면의 앞쪽 경계(0~1)
+        platformInsetPx: 2,       // 접시를 경계보다 조금 안쪽에 놓는 거리
         // 원래 접시 번호 3→1→2 = 첨부한 layer1→layer2→layer3
         plateWidths: [.62, .48, .45],
         plateLifts: [0, .012, .062],
@@ -42,7 +43,7 @@ window.FishConfig = {
         introOne: 'assets/fish01/intro-1.png', introTwo: 'assets/fish01/intro-2.png',
         instruction: 'assets/fish01/instruction.png', dishes: 'assets/fish01/dishes.png',
         plates: ['assets/fish01/plate-1.png','assets/fish01/plate-2.png','assets/fish01/plate-3.png'],
-        placeHint: 'assets/fish01/place-hint.png', shadow: 'assets/fish01/shadow.png',
+        platform: 'assets/fish01/platform.png',
         rays: 'assets/fish01/rays.png', fish: 'assets/fish01/fish.png', fishName: 'assets/fish01/fish-name.png',
         awakeMessage: 'assets/web/5_03-말풍선.png', levelMessage: 'assets/web/5_09-말풍선.png',
         waitingMessage: 'assets/web/5_10-말풍선.png', bubble: 'assets/5_10-공기방울.png',

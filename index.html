@@ -24,6 +24,7 @@
 <script src="shared/phone-sync.js" defer></script>
 <script src="boot.js" defer></script>
   <link rel="stylesheet" href="home-guide.css">
+  <link rel="preload" href="assets/fonts/ownglyph-yooooonjae.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="sync.css">
 </head>
 <body>
@@ -76,8 +77,7 @@
           <button id="dishTray" class="dish-tray" type="button" aria-label="그릇 사진을 꾹 누른 채 첫 번째 접시를 아래로 천천히 옮기기">
             <img src="assets/fish01/dishes.png" alt="여러 그릇이 담긴 바구니" draggable="false">
           </button>
-          <img id="dishPlaceHint" class="dish-place-hint" src="assets/fish01/place-hint.png" alt="이곳에 그릇을 놓아주세요" draggable="false">
-          <div id="dishShadow" class="dish-shadow" aria-hidden="true"></div>
+          <img id="dishPlatform" class="dish-platform" src="assets/fish01/platform.png" width="2048" height="633" decoding="async" alt="" draggable="false" aria-hidden="true">
           <div id="dishStack" class="dish-stack" aria-label="옮긴 접시">
             <img src="assets/fish01/plate-1.png" alt="큰 꽃무늬 접시" hidden>
             <img src="assets/fish01/plate-2.png" alt="작은 테두리 접시" hidden>

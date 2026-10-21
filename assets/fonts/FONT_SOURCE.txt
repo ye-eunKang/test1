@@ -1,0 +1,9 @@
+온글잎 뉸재 / Ownglyph Yooooonjae Regular
+저작권자: (주)보이저엑스 및 한윤재 (Yoonjae Han), 2022
+
+공식 배포 페이지:
+https://www.ownglyph.com/trial/c4cad089-6849-4815-ba8b-dc334ab0f0c3
+
+공식 WOFF2 원본을 수정 없이 사용했습니다.
+사용 안내는 https://www.ownglyph.com/font 의 '온글잎 폰트 라이선스'에서 확인할 수 있습니다.
+공식 안내는 웹 UI 사용, 웹서버 탑재, 폰트 파일 배포를 허용하며 파일 수정과 폰트 자체의 유료 판매는 허용하지 않습니다.
