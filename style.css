@@ -29,7 +29,7 @@
 .lp-preview input {display:block;width:100%;margin-top:8px;}
 #stage[data-fish="fish02"] .fish-name {left:35%;top:20%;width:30%;}
 #stage[data-fish="fish02"] #fish {left:15%;top:40%;width:70%;}
-#stage[data-fish="fish02"] .awake,#stage[data-fish="fish02"] .level {left:12%;top:55%;width:76%;}
+#stage[data-fish="fish02"] .awake,#stage[data-fish="fish02"] .level {left:12%;top:60%;width:76%;}
 #stage[data-fish="fish02"] #rays {top:46%;width:240%;}
 
 * {
