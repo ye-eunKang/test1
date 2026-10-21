@@ -141,6 +141,7 @@
     if (id === '1') id = 'fish01';
     if (id === '2') id = 'fish02';
     if (id === '5') id = 'fish05';
+    if (id === '6') id = 'fish06';
     const entry = profiles.find((item) => item.id === id);
     const definition = definitions.get(id);
     if (!entry || !definition) {
@@ -453,7 +454,7 @@
     });
     const params = new URLSearchParams(location.search);
     const rawSelected = params.get('fish') || params.get('interaction');
-    const selected = rawSelected === '1' ? 'fish01' : rawSelected === '2' ? 'fish02' : rawSelected === '5' ? 'fish05' : rawSelected;
+    const selected = rawSelected === '1' ? 'fish01' : rawSelected === '2' ? 'fish02' : rawSelected === '5' ? 'fish05' : rawSelected === '6' ? 'fish06' : rawSelected;
     const phase = params.get('phase');
     const preview = debug ? params.get('preview') : null;
     showHome();

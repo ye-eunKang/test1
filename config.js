@@ -87,6 +87,34 @@ window.FishConfig = {
         waitingMessage:'assets/web/5_10-말풍선.png', bubble:'assets/5_10-공기방울.png',
       },
     },
+    {
+      id:'fish06', label:'6번 · 물건 고르기', videoSrc:'',
+      game:{
+        shakeThreshold:12,        // 좌우 가속도(m/s²). 작을수록 약한 흔들기에도 반응
+        shakeAlternations:2,      // 좌→우→좌처럼 방향이 이 횟수만큼 바뀌어야 한 번 선택
+        shakeWindowMs:1100,       // 위 방향 전환을 완료할 시간
+        minPeakGapMs:80,
+        shakeCooldownMs:900,      // 물건이 바뀐 후 최소 쉬는 시간
+        rearmQuietMs:400,         // 잠깐 멈춘 뒤 다시 흔들어야 다음 물건으로 변경
+        armDelayMs:250,
+        sensorGapMs:700,
+      },
+      assets:{
+        finishGif:'',
+        introOne:'assets/fish06/Web page ui_S6-1_ment1.png',
+        introTwo:'assets/fish06/Web page ui_S6-1_ment2.png',
+        instruction:'assets/fish06/Web page ui_S6-2_ment1.png',
+        frame:'assets/fish06/Web page ui_S6-2_square.png',
+        items:[
+          {id:'luck',label:'네잎클로버 키링',image:'assets/fish06/Web page ui_S6-2-luck.png',
+            mentOne:'assets/fish06/Web page ui_S6-2-luck_ment1.png',mentTwo:'assets/fish06/Web page ui_S6-2-luck_ment2.png'},
+          {id:'hairpin',label:'알록달록 색핀',image:'assets/fish06/Web page ui_S6-2-hairpin.png',
+            mentOne:'assets/fish06/Web page ui_S6-2-hairpin_ment1.png',mentTwo:'assets/fish06/Web page ui_S6-2-hairpin_ment2.png'},
+          {id:'squishy',label:'스퀴시',image:'assets/fish06/Web page ui_S6-2_squishy.png',
+            mentOne:'assets/fish06/Web page ui_S6-2_squishy_ment1.png',mentTwo:'assets/fish06/Web page ui_S6-2_squishy_ment2.png'},
+        ],
+      },
+    },
     // 남은 게임. 실제 작업할 때 id·label·assets를 수정하세요.
     // 해당 JS 모듈이 등록되기 전에는 실행 버튼이 비활성화됩니다.
     { id: 'extra03', label: '추가 물고기 3 · 준비 중', videoSrc: '', game: {}, assets: {} },

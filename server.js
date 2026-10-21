@@ -6,22 +6,25 @@ const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { WebSocketServer, WebSocket } = require('ws');
 const settings = require('./sync-config.js');
+const { createChoiceStore } = require('./choice-store.js');
 
 function createExhibitServer(options = {}) {
   const root = options.root || __dirname;
   const config = options.config || settings;
   const rooms = new Map();
   const pendingTD = new Map();
+  const choiceStore = createChoiceStore(options.choiceFile || process.env.FISH_CHOICE_FILE || path.join(root,'data','item-choices.jsonl'));
   const publicFiles = new Set(['index.html','display.html','display.js','display.css','sync-config.js',
     'sync.css','config.js','app.js','boot.js','home-guide.js','home-guide.css','home.css','style.css','water-background.js']);
   const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8',
     '.css':'text/css; charset=utf-8', '.png':'image/png', '.gif':'image/gif', '.svg':'image/svg+xml',
     '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.webp':'image/webp', '.mp4':'video/mp4', '.mov':'video/quicktime' };
   const server = http.createServer((req, res) => {
-    if (!['GET','HEAD'].includes(req.method)) { res.writeHead(405).end(); return; }
     let name;
     try { name = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); }
     catch (_) { res.writeHead(400).end(); return; }
+    if (choiceStore.handle(req,res,name)) return;
+    if (!['GET','HEAD'].includes(req.method)) { res.writeHead(405).end(); return; }
     if (name === '/health') { res.writeHead(200, {'Content-Type':'application/json'}).end('{"ok":true}'); return; }
     if (name === '/') name = '/index.html';
     const relative = name.slice(1);
@@ -214,7 +217,8 @@ function createExhibitServer(options = {}) {
       ws.alive = false; ws.ping();
     }
   }, 20000); heartbeat.unref();
-  function close() {
+  async function close() {
+    await choiceStore.flush();
     clearInterval(heartbeat);
     for (const room of rooms.values()) { clearTimeout(room.resetTimer); clearTimeout(room.disconnectTimer); }
     for (const ws of wss.clients) ws.terminate();

@@ -17,10 +17,13 @@
   <script src="shared/stillness.js" defer></script>
   <script src="shared/motion.js" defer></script>
   <script src="shared/ending-gif.js" defer></script>
+  <script src="shared/horizontal-shake.js" defer></script>
+  <script src="shared/item-choices.js" defer></script>
   <script src="app.js" defer></script>
   <script src="interactions/fish05.js" defer></script>
   <script src="interactions/fish01.js" defer></script>
   <script src="interactions/fish02.js" defer></script>
+  <script src="interactions/fish06.js" defer></script>
   <!-- 추후 추가할 게임의 script는 이 위/아래에서, boot.js보다 먼저 연결 -->
 <script src="home-guide.js" defer></script>
 <script src="shared/phone-sync.js" defer></script>
@@ -69,6 +72,25 @@
     </section>
     <!-- 각 미니게임은 자기 영역 안에서만 화면을 전환합니다. -->
     <section id="interactionScreen" class="scene" hidden>
+      <div id="fish06View" class="interaction-view" hidden>
+        <section id="tradeIntro" class="scene" aria-label="물건 교환 안내">
+          <img class="art trade-intro-one" src="assets/fish06/Web page ui_S6-1_ment1.png" alt="이 물고기랑 같이 가고 싶은데…">
+          <img class="art trade-intro-two" src="assets/fish06/Web page ui_S6-1_ment2.png" alt="혹시 바꿀 만한 물건이 있을까?">
+          <button id="tradeBegin" class="trade-intro-hit" type="button" aria-label="안내를 마치고 물건 고르기 시작"></button>
+        </section>
+        <section id="tradeGame" class="scene" aria-label="흔들어서 물건 고르기" hidden>
+          <img id="tradeInstruction" class="art trade-instruction" src="assets/fish06/Web page ui_S6-2_ment1.png" alt="휴대폰을 좌우로 세게 흔들어 물건을 골라보자!">
+          <img id="tradeMentOne" class="art trade-ment-one" alt="" hidden>
+          <img id="tradeMentTwo" class="art trade-ment-two" alt="" hidden>
+          <div class="trade-card">
+            <img id="tradeFrame" src="assets/fish06/Web page ui_S6-2_square.png" alt="" draggable="false">
+            <img id="tradeItem" alt="" draggable="false" hidden>
+          </div>
+          <p id="tradeFeedback" class="trade-feedback" role="status"></p>
+          <button id="tradeConfirm" class="trade-confirm" type="button" hidden>이걸로 정했어!</button>
+          <button id="tradePreviewShake" class="quiet trade-preview" type="button" hidden>PC 미리보기 · 좌우로 흔들기</button>
+        </section>
+      </div>
       <div id="fish02View" class="interaction-view" hidden>
         <section id="lpIntro" class="scene" aria-label="LP 안내">
           <img class="art intro-one" src="assets/fish02/intro-1.png" alt="이 LP판에 있는 물고기도 나올 수 있을까?">
