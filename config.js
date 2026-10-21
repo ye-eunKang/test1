@@ -68,9 +68,26 @@ window.FishConfig = {
         waitingMessage: 'assets/web/5_10-말풍선.png', bubble: 'assets/5_10-공기방울.png',
       },
     },
-    // 남은 2개 게임. 실제 작업할 때 id·label·assets를 수정하세요.
+    {
+      id:'fish02', label:'2번 · LP / 도루묵', videoSrc:'',
+      game:{
+        balanceTolerance:8,       // 좌우 기울기 허용 각도
+        balanceHoldMs:3000,       // 이 시간 동안 연속으로 중심을 유지하면 성공
+        maxVisualTilt:28,
+        smoothingSeconds:.16,
+        successPauseMs:650,
+      },
+      assets:{
+        introOne:'assets/fish02/intro-1.png', introTwo:'assets/fish02/intro-2.png',
+        instruction:'assets/fish02/instruction.png', record:'assets/fish02/record.png',
+        balanceBase:'assets/fish02/balance-base.png',
+        rays:'assets/fish02/rays.png', fish:'assets/fish02/fish.png', fishName:'assets/fish02/fish-name.png',
+        awakeMessage:'assets/web/5_03-말풍선.png', levelMessage:'assets/web/5_09-말풍선.png',
+        waitingMessage:'assets/web/5_10-말풍선.png', bubble:'assets/5_10-공기방울.png',
+      },
+    },
+    // 남은 게임. 실제 작업할 때 id·label·assets를 수정하세요.
     // 해당 JS 모듈이 등록되기 전에는 실행 버튼이 비활성화됩니다.
-    { id: 'extra02', label: '추가 물고기 2 · 준비 중', videoSrc: '', game: {}, assets: {} },
     { id: 'extra03', label: '추가 물고기 3 · 준비 중', videoSrc: '', game: {}, assets: {} },
   ],
 };

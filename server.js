@@ -33,7 +33,7 @@ function createExhibitServer(options = {}) {
     fs.stat(filename, (error, stat) => {
       if (error || !stat.isFile()) { res.writeHead(404).end('Not Found'); return; }
       const headers = { 'Content-Type': mime[path.extname(filename).toLowerCase()] || 'application/octet-stream',
-        'Accept-Ranges':'bytes', 'Cache-Control': /\.(html|js|css)$/.test(filename) ? 'no-cache' : 'public, max-age=3600' };
+        'Accept-Ranges':'bytes', 'Cache-Control': /\.(html|js|css|mp4|mov)$/.test(filename) ? 'no-cache' : 'public, max-age=3600' };
       let start = 0, end = stat.size - 1, status = 200;
       if (req.headers.range) {
         const match = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range);
@@ -54,13 +54,13 @@ function createExhibitServer(options = {}) {
   function roomFor(fish) {
     if (!rooms.has(fish)) rooms.set(fish, {fish, phase:'idle', playing:false, session:null, owner:null,
       revision:0, returnAt:null, resetTimer:null, disconnectTimer:null, display:null,
-      pourComplete:false, waterEnded:false, waterProgress:null, waterRate:0});
+      pourComplete:false, waterEnded:false, waterProgress:null, waterRate:0, activeDisplay:null});
     return rooms.get(fish);
   }
   function send(ws, data) { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data)); }
   function snapshot(room) {
-    const {fish,phase,playing,session,owner,revision,returnAt,pourComplete,waterEnded,waterProgress,waterRate} = room;
-    return {type:'state',fish,phase,playing,session,owner,revision,returnAt,pourComplete,waterEnded,waterProgress,waterRate};
+    const {fish,phase,playing,session,owner,revision,returnAt,pourComplete,waterEnded,waterProgress,waterRate,activeDisplay} = room;
+    return {type:'state',fish,phase,playing,session,owner,revision,returnAt,pourComplete,waterEnded,waterProgress,waterRate,activeDisplay};
   }
   function broadcast(room) {
     room.revision++;
@@ -104,7 +104,7 @@ function createExhibitServer(options = {}) {
         }
         ws.role = msg.role; ws.fish = msg.fish; ws.clientId = msg.clientId;
         const room = roomFor(msg.fish);
-        if (ws.role === 'display') { room.display = ws; }
+        // 새 탭을 여는 것만으로 실제 전시 화면의 재생 권한을 가져가지 않습니다.
         if (ws.role === 'phone' && room.owner === ws.clientId) {
           clearTimeout(room.disconnectTimer); room.disconnectTimer = null;
         }
@@ -116,6 +116,12 @@ function createExhibitServer(options = {}) {
       }
       if (!ws.role || msg.type !== 'event') return;
       const room = roomFor(ws.fish);
+      if (ws.role === 'display' && msg.name === 'display-active') {
+        if (typeof msg.playerId !== 'string' || !msg.playerId.length || msg.playerId.length > 100) return;
+        if (msg.resume && room.activeDisplay && room.activeDisplay !== msg.playerId) return;
+        ws.playerId = msg.playerId; room.display = ws; room.activeDisplay = msg.playerId;
+        broadcast(room); return;
+      }
       if (ws.role === 'display' && msg.name === 'reset') {
         // 이전 연결에 남은 초기화 요청이 다음 관객의 진행을 지우지 않도록 합니다.
         if (msg.session !== room.session) { send(ws,snapshot(room)); return; }
@@ -170,6 +176,10 @@ function createExhibitServer(options = {}) {
           reset(room);
         }
       } else if (ws.role === 'display' && msg.name === 'video-ended') {
+        if (ws !== room.display || msg.playerId !== room.activeDisplay) return;
+        if (msg.source !== config.fish[room.fish].display[msg.clip]
+          || !Number.isFinite(msg.duration) || msg.duration <= 0 || !Number.isFinite(msg.currentTime)
+          || msg.currentTime < msg.duration - .08) return;
         // 같은 물고기 화면의 실제 재생 창에서 종료를 받습니다.
         // 다른 탭을 열어도 막히지 않으며, 세션·단계 검사로 중복 전환을 막습니다.
         if (msg.clip === 'water' && msg.stage === 'water-playing' && room.phase === 'water-playing' && !room.waterEnded) {
@@ -186,7 +196,7 @@ function createExhibitServer(options = {}) {
     ws.on('close', () => {
       if (!ws.fish) return;
       const room = roomFor(ws.fish);
-      if (room.display === ws) room.display = [...wss.clients].find(x => x !== ws && x.fish === ws.fish && x.role === 'display') || null;
+      if (room.display === ws) room.display = null;
       if (ws.role === 'phone' && room.owner === ws.clientId && room.phase !== 'idle') {
         const stillOnline = [...wss.clients].some(x => x !== ws && x.role === 'phone' && x.fish === ws.fish
           && x.clientId === ws.clientId && x.readyState === WebSocket.OPEN);

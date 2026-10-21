@@ -11,6 +11,23 @@
   const note = document.getElementById('displayStatus');
   let unlocked = false, currentClip = null, desired = null, token = 0, endedKey = null;
   let waterFrame = null, waterPlay = null, waterBlocked = false;
+  const playerId = (crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`);
+  let announcedSocket = null, hasClaimed = false, playback = null;
+  function claimDisplay(resume = false) {
+    if (!client.ready || !unlocked) return;
+    if (client.event('display-active',{playerId,resume})) {
+      announcedSocket = client.socket; hasClaimed = true;
+    }
+  }
+  function loadedSource(clip) {
+    return playback?.clip === clip && playback.session === desired?.session && playback.ready
+      && video.currentSrc === playback.source && video.readyState >= 1;
+  }
+  function finished(clip) {
+    return loadedSource(clip) && playback.started && video.ended && !video.seeking
+      && Number.isFinite(video.duration) && video.duration > 0
+      && video.currentTime >= video.duration - .08;
+  }
   // 물 영상만 적용. 최고 속도와 속도 변화 시간을 여기서 조정하세요.
   const WATER_PLAYBACK = {
     maxRate: 3,          // 기존 최대 8배 → 3배. 급가속과 장면 건너뛰기를 줄입니다.
@@ -42,11 +59,14 @@
     return currentClip === 'water' && Number.isFinite(state?.waterProgress)
       && ['water-ready','water-playing'].includes(state.phase);
   }
-  function sendEnded(clip, state = desired) {
-    if (!client.ready || !state?.session) return;
+  function sendEnded(clip, state = desired, retry = false) {
+    if (!client.ready || !state?.session || state.activeDisplay !== playerId || !finished(clip)) return;
     if (clip === 'water' && Number.isFinite(state.waterProgress) && state.waterProgress < 1) return;
     const key = `${state.session}:${state.phase}:${clip}`;
-    if (endedKey !== key && client.event('video-ended',{clip,stage:state.phase})) endedKey = key;
+    if ((retry || endedKey !== key) && client.event('video-ended',{
+      clip,stage:state.phase,playerId,source:profile.display[clip],
+      currentTime:video.currentTime,duration:video.duration,
+    })) endedKey = key;
   }
   function stopWaterSync() {
     if (waterFrame !== null) cancelAnimationFrame(waterFrame);
@@ -137,20 +157,24 @@
     desired = state;
     if (!['water-ready','water-playing'].includes(state.phase)) waterRestorePending = false;
     if (!unlocked) return;
+    if (announcedSocket !== client.socket) claimDisplay(hasClaimed);
     const media = mediaFor(state);
     stage.dataset.phase = state.phase;
     applyGameLayers(media.clip);
-    const changed = currentClip !== media.clip;
+    const changed = currentClip !== media.clip || playback?.session !== state.session;
     if (changed) { waterBlocked = false; waterPlay = null; waterRate = 1; lastWaterTick = null; }
     const phaseChanged = previous?.phase !== state.phase || previous?.session !== state.session;
     currentClip = media.clip;
+    if (changed) playback = {clip:media.clip,session:state.session,
+      source:new URL(profile.display[media.clip],location.href).href,ready:false,started:false};
+    const load = playback;
     if (!media.waterSync) { stopWaterSync(); video.playbackRate = 1; }
     const current = ++token;
     video.muted = media.clip !== 'main';
     video.volume = 1;
     video.loop = !!media.loop;
     video.onended = () => {
-      if (current !== token || !client.ready || desired.session !== state.session) return;
+      if (current !== token || load !== playback || !client.ready || desired.session !== state.session) return;
       const clip = media.clip;
       if ((clip === 'water' && desired.phase === 'water-playing')
         || (clip === 'main' && desired.phase === 'main-playing')
@@ -160,16 +184,21 @@
       }
     };
     const ready = async () => {
-      if (current !== token) return;
+      if (current !== token || load !== playback || video.readyState < 1 || video.currentSrc !== load.source) return;
+      load.ready = true;
       if (media.position === 'start' && (changed || phaseChanged)) video.currentTime = 0;
       if (media.position === 'end' && Number.isFinite(video.duration)) video.currentTime = Math.max(0,video.duration-.04);
       if (media.waterSync) { startWaterSync(); return; }
       if (!media.play) { video.pause(); return; }
       // 완료 신호의 서버 응답을 기다리는 동안 끝난 영상을 다시 재생하지 않습니다.
-      if (!media.loop && video.ended) {
+      if (!media.loop && finished(media.clip)) {
         video.onended(); video.pause(); return;
       }
-      try { await video.play(); if (current !== token && !mediaFor(desired).play) video.pause(); }
+      try {
+        await video.play();
+        if (current === token && load === playback && video.currentSrc === load.source) load.started = true;
+        if (current !== token && !mediaFor(desired).play) video.pause();
+      }
       catch (_) { if (current === token) { gate.hidden = false; note.textContent = '화면을 눌러 재생을 시작해주세요.'; } }
     };
     if (changed) {
@@ -194,9 +223,13 @@
     if (!image.hidden) note.textContent = `게임 배경을 불러오지 못했어요: ${image.getAttribute('src')}`;
   });
   video.addEventListener('loadeddata', () => { if (waterSync()) startWaterSync(); });
+  video.addEventListener('playing', () => {
+    if (playback && loadedSource(currentClip)) playback.started = true;
+  });
   video.addEventListener('seeked', () => { if (waterSync()) startWaterSync(); });
   document.getElementById('displayStart').addEventListener('click', () => {
     unlocked = true; waterBlocked = false; gate.hidden = true;
+    claimDisplay(false);
     if (desired) apply(desired);
   });
   document.addEventListener('visibilitychange', () => {
@@ -206,15 +239,15 @@
   // 영상이 끝나는 순간 연결이 끊겼다면, 재연결 후 종료 신호를 한 번 전송합니다.
   const originalApply = client.onState;
   client.onState = state => {
-    if (video.ended && desired?.session === state.session && desired?.phase === state.phase
+    if (finished(currentClip) && desired?.session === state.session && desired?.phase === state.phase
       && ((currentClip === 'water' && state.phase === 'water-playing')
       || (currentClip === 'main' && state.phase === 'main-playing')
       || (currentClip === 'game' && state.phase === 'game-playing')
       || (currentClip === 'ending' && state.phase === 'ending-playing'))
       && (currentClip !== 'water' || !Number.isFinite(state.waterProgress) || state.waterProgress >= 1)) {
-      const key = `${state.session}:${state.phase}:${currentClip}`;
       // 서버가 아직 같은 단계라면 종료를 확인하지 못한 상태입니다. 재연결 때 다시 전송합니다.
-      if (client.event('video-ended',{clip:currentClip,stage:state.phase})) endedKey = key;
+      if (announcedSocket !== client.socket) claimDisplay(hasClaimed);
+      sendEnded(currentClip,state,true);
       desired = state;
       return;
     }
