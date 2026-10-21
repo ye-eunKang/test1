@@ -145,7 +145,9 @@
     currentClip = media.clip;
     if (!media.waterSync) { stopWaterSync(); video.playbackRate = 1; }
     const current = ++token;
-    video.muted = true; video.loop = !!media.loop;
+    video.muted = media.clip !== 'main';
+    video.volume = 1;
+    video.loop = !!media.loop;
     video.onended = () => {
       if (current !== token || !client.ready || desired.session !== state.session) return;
       const clip = media.clip;
