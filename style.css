@@ -430,3 +430,62 @@ button:focus-visible {
     aspect-ratio: auto;
   }
 }
+
+/* 1번 접시 게임 — 별도 fish01.css 없이 이 파일에서 수정합니다.
+ * 새 레이아웃 레퍼런스의 화면 비율에 맞춘 위치/크기입니다.
+ * 위치: left / top, 크기: width. 접시 PNG의 투명 영역은 그대로 표시합니다.
+ */
+#stage[data-fish="fish01"] { background: #53d5ee; }
+#fish01View { background: #53d5ee; touch-action: none; user-select: none; }
+#fish01View img { user-select: none; -webkit-user-drag: none; }
+#fish01View .intro-one { left: 3%; top: 5.5%; width: 64%; }
+#fish01View .intro-two { left: 23%; top: 21.5%; width: 73%; }
+#fish01View .instruction { left: 6.2%; top: 11.4%; width: 87.6%; }
+/* 네이티브 버튼 배경/테두리를 없애 투명 PNG만 보이게 합니다. */
+#dishTray, #dishMoving {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0; padding: 0;
+  min-width: 0; min-height: 0;
+  border: 0; border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  line-height: 0;
+}
+#dishTray:disabled { opacity: 1; }
+#dishTray img, #dishMovingImage, #dishStack img {
+  background: transparent;
+  border: 0; border-radius: 0; box-shadow: none;
+}
+/* 첫 접시 원본 오른쪽 가장자리에 남은 다른 그릇 조각만 가립니다. */
+#fish01View img[src$="/plate-1.png"] { clip-path: inset(0 3% 0 0); }
+.dish-tray {
+  position: absolute; left: 3%; top: 25.2%; width: 94.5%;
+  padding: 0; border: 0; background: transparent;
+}
+.dish-tray img { display: block; width: 100%; height: auto; pointer-events: none; }
+.dish-tray:disabled { cursor: default; }
+.dish-place-hint { position: absolute; left: 30%; top: 84.3%; width: 39.7%; pointer-events: none; }
+.dish-shadow { position: absolute; left: 17.4%; top: 90.4%; width: 64.9%; height: auto; pointer-events: none; }
+.dish-stack { position: absolute; inset: 0; pointer-events: none; }
+.dish-stack img { position: absolute; left: 50%; height: auto; transform: translateX(-50%); }
+.dish-moving {
+  position: absolute; left: 0; top: 0; z-index: 3;
+  padding: 0; border: 0; background: transparent;
+  transform: translate3d(var(--dish-x, 0px),var(--dish-y, 0px),0) translate(-50%,-50%);
+  touch-action: none; cursor: grab; will-change: transform;
+}
+.dish-moving[data-dragging="true"] { cursor: grabbing; }
+.dish-moving[data-settling="true"] { transition: transform .35s ease-out; pointer-events: none; }
+.dish-moving img { display: block; width: 100%; height: auto; pointer-events: none; }
+.dish-feedback {
+  position: absolute; top: 61%; left: 9%; width: 82%; margin: 0;
+  font-size: 13px; line-height: 1.6; color: #07555d; text-align: center; pointer-events: none;
+}
+.dish-feedback:empty { display: none; }
+/* 1번 물고기는 레퍼런스의 위치를 쓰고, 이후 수평 안내는 공통 화면을 씁니다. */
+#stage[data-fish="fish01"] .fish-name { top: 30%; left: 26%; width: 48%; }
+#stage[data-fish="fish01"] #fish { top: 43%; left: 24%; width: 56%; }
+#stage[data-fish="fish01"] .awake { top: 68%; left: 14%; width: 72%; }
+#stage[data-fish="fish01"] #rays { top: 46%; }
+@media(prefers-reduced-motion: reduce) { .dish-moving[data-settling="true"] { transition: none; } }
