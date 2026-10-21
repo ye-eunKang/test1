@@ -436,7 +436,7 @@ button:focus-visible {
  * 위치: left / top, 크기: width. 접시 PNG의 투명 영역은 그대로 표시합니다.
  */
 #stage[data-fish="fish01"] { background: #53d5ee; }
-#fish01View { background: #53d5ee; touch-action: none; user-select: none; }
+#fish01View { background: #53d5ee; touch-action: none; user-select: none; -webkit-user-select: none; }
 #fish01View img { user-select: none; -webkit-user-drag: none; }
 #fish01View .intro-one { left: 3%; top: 5.5%; width: 64%; }
 #fish01View .intro-two { left: 23%; top: 21.5%; width: 73%; }
@@ -462,18 +462,48 @@ button:focus-visible {
 .dish-tray {
   position: absolute; left: 3%; top: 25.2%; width: 94.5%;
   padding: 0; border: 0; background: transparent;
+  touch-action: none; -webkit-touch-callout: none; cursor: grab;
 }
+.dish-tray::after {
+  content: ''; position: absolute; left: 2%; right: 2%; bottom: 2%; height: 3px;
+  border-radius: 2px; background: #faffde; opacity: 0; transform: scaleX(0);
+  transform-origin: left; pointer-events: none;
+}
+.dish-tray[data-pressing="true"]::after {
+  opacity: .95; animation: dishHoldProgress var(--dish-hold-time,450ms) linear forwards;
+}
+.dish-tray[data-carrying="true"] { cursor: grabbing; }
+@keyframes dishHoldProgress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .dish-tray img { display: block; width: 100%; height: auto; pointer-events: none; }
 .dish-tray:disabled { cursor: default; }
 .dish-place-hint { position: absolute; left: 30%; top: 84.3%; width: 39.7%; pointer-events: none; }
-.dish-shadow { position: absolute; left: 17.4%; top: 90.4%; width: 64.9%; height: auto; pointer-events: none; }
-.dish-stack { position: absolute; inset: 0; pointer-events: none; }
+/* 접시 바닥과 같은 좌표를 쓰는 바닥 그림자. 크기는 첫 접시의 너비에 맞춥니다. */
+.dish-shadow {
+  position: absolute; left: 50%; top: var(--dish-ground,94%);
+  width: var(--dish-base-shadow,55.8%); height: 3.6%;
+  transform: translate(-50%,-50%); pointer-events: none; z-index: 0;
+  transition: height .25s ease;
+}
+.dish-shadow::before, .dish-shadow::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse closest-side,rgba(5,78,94,.23) 0%,rgba(5,78,94,.11) 50%,rgba(5,78,94,0) 100%);
+  opacity: .6; transition: opacity .25s ease,transform .25s ease;
+}
+.dish-shadow::after {
+  inset: 32% 8%; opacity: 0;
+  background: radial-gradient(ellipse closest-side,rgba(5,68,80,.38) 0%,rgba(5,68,80,.14) 55%,rgba(5,68,80,0) 100%);
+}
+.dish-shadow[data-near="true"]::before { opacity: 1; transform: scale(1.04); }
+#fish01View:not([data-count="0"]) .dish-shadow { height: 2.6%; }
+#fish01View:not([data-count="0"]) .dish-shadow::before { opacity: .85; }
+#fish01View:not([data-count="0"]) .dish-shadow::after { opacity: .9; }
+.dish-stack { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 .dish-stack img { position: absolute; left: 50%; height: auto; transform: translateX(-50%); }
 .dish-moving {
   position: absolute; left: 0; top: 0; z-index: 3;
   padding: 0; border: 0; background: transparent;
   transform: translate3d(var(--dish-x, 0px),var(--dish-y, 0px),0) translate(-50%,-50%);
-  touch-action: none; cursor: grab; will-change: transform;
+  touch-action: none; -webkit-touch-callout: none; cursor: grab; will-change: transform;
 }
 .dish-moving[data-dragging="true"] { cursor: grabbing; }
 .dish-moving[data-settling="true"] { transition: transform .35s ease-out; pointer-events: none; }
@@ -489,3 +519,7 @@ button:focus-visible {
 #stage[data-fish="fish01"] .awake { top: 68%; left: 14%; width: 72%; }
 #stage[data-fish="fish01"] #rays { top: 46%; }
 @media(prefers-reduced-motion: reduce) { .dish-moving[data-settling="true"] { transition: none; } }
+@media(prefers-reduced-motion: reduce) {
+  .dish-tray[data-pressing="true"]::after { animation: none; transform: scaleX(1); }
+  .dish-shadow, .dish-shadow::before, .dish-shadow::after { transition: none; }
+}

@@ -25,6 +25,8 @@ window.FishConfig = {
     {
       id: 'fish01', label: '1번 · 접시 / 흰동가리', videoSrc: '',
       game: {
+        pickupHoldMs: 450,    // 사진을 이 시간 동안 꾹 누른 뒤, 손을 떼지 않고 끌어갑니다.
+        pickupMovePx: 12,     // 꾹 누르는 동안 허용하는 손 떨림(CSS px)
         minCarryMs: 1100,      // 한 접시를 최소 1.1초 동안 천천히 옮깁니다.
         maxSpeed: .95,        // 초당 화면 높이의 0.95배. 클수록 빠른 이동을 허용합니다.
         speedGraceMs: 140,    // 잠깐의 손 떨림은 허용합니다.
