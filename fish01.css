@@ -6,7 +6,7 @@
 #fish01View .intro-two { left: 23%; top: 21.5%; width: 73%; }
 #fish01View .instruction { left: 6.5%; top: 11.5%; width: 87%; }
 .dish-tray {
-  position: absolute; left: 3%; top: 25%; width: 94%;
+  position: absolute; left: 3%; top: 25%; width: 50%;
   padding: 0; border: 0; background: transparent;
 }
 .dish-tray img { display: block; width: 100%; height: auto; pointer-events: none; }
