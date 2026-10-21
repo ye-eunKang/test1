@@ -161,15 +161,20 @@ button:focus-visible {
 }
 
 .shadow {
-  position:absolute;
-  background:#ad941d;
-  clip-path:polygon(62%,89% 3%,35% 100%,0 100%,0 49%);
-  left:0;
-  top:27%;
-  height:73%;
-  width:37%;
+  position: absolute;
+  background: #ad941d;
+  clip-path: polygon(
+    62% 0%,
+    89% 3%,
+    35% 100%,
+    0% 100%,
+    0% 49%
+  );
+  left: 0;
+  top: 27%;
+  height: 73%;
+  width: 37%;
 }
-
 /* 수도꼭지와 호스는 같은 이미지 좌표를 씁니다. 버디3에서도 연결점이 유지됩니다.
  * 전체 위치/크기: 아래 left, top, width만 바꾸세요.
  * 원본 수도꼭지 496×397 / 물 나오는 중심 (385, 360)
