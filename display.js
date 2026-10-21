@@ -4,6 +4,9 @@
   const fish = new URLSearchParams(location.search).get('fish') || 'fish05';
   const profile = FishSyncConfig.fish[fish];
   const video = document.getElementById('displayVideo');
+  const stage = document.getElementById('displayStage');
+  const gameBack = document.getElementById('displayGameBack');
+  const gameGraphic = document.getElementById('displayGameGraphic');
   const gate = document.getElementById('displayGate');
   const note = document.getElementById('displayStatus');
   let unlocked = false, currentClip = null, desired = null, token = 0, endedKey = null;
@@ -19,7 +22,22 @@
   };
   let waterRate = 1, lastWaterTick = null, waterRestorePending = true;
   if (!profile) { note.textContent = '물고기 영상 설정을 확인해주세요.'; return; }
+  stage.dataset.fish = fish;
+  // GIF는 처음에 한 번만 미리 불러옵니다. 게임 시작·성공 신호로 다시 생성하지 않습니다.
+  if (profile.display.gameLayers?.background) gameBack.src = profile.display.gameLayers.background;
+  if (profile.display.gameLayers?.foreground) gameGraphic.src = profile.display.gameLayers.foreground;
   const clamp = (value,min,max) => Math.max(min,Math.min(max,value));
+  function applyGameLayers(clip) {
+    const layers = clip === 'ending' ? profile.display.gameLayers : null;
+    const active = !!(layers?.background && layers?.foreground);
+    if (active) {
+      stage.dataset.layered = 'true';
+      // 같은 GIF의 src를 상태 갱신 때마다 바꾸지 않아 재생이 계속 이어집니다.
+      if (gameBack.getAttribute('src') !== layers.background) gameBack.src = layers.background;
+      if (gameGraphic.getAttribute('src') !== layers.foreground) gameGraphic.src = layers.foreground;
+    } else delete stage.dataset.layered;
+    gameBack.hidden = gameGraphic.hidden = !active;
+  }
   function waterSync(state = desired) {
     return currentClip === 'water' && Number.isFinite(state?.waterProgress)
       && ['water-ready','water-playing'].includes(state.phase);
@@ -119,6 +137,8 @@
     if (!['water-ready','water-playing'].includes(state.phase)) waterRestorePending = false;
     if (!unlocked) return;
     const media = mediaFor(state);
+    stage.dataset.phase = state.phase;
+    applyGameLayers(media.clip);
     const changed = currentClip !== media.clip;
     if (changed) { waterBlocked = false; waterPlay = null; waterRate = 1; lastWaterTick = null; }
     const phaseChanged = previous?.phase !== state.phase || previous?.session !== state.session;
@@ -141,8 +161,8 @@
       if (media.position === 'end' && Number.isFinite(video.duration)) video.currentTime = Math.max(0,video.duration-.04);
       if (media.waterSync) { startWaterSync(); return; }
       if (!media.play) { video.pause(); return; }
-      // 물의 양이 아직 부족해도 종료된 물 영상을 처음부터 다시 재생하지 않습니다.
-      if (media.clip === 'water' && video.ended) {
+      // 완료 신호의 서버 응답을 기다리는 동안 끝난 영상을 다시 재생하지 않습니다.
+      if (!media.loop && video.ended) {
         video.onended(); video.pause(); return;
       }
       try { await video.play(); if (current !== token && !mediaFor(desired).play) video.pause(); }
@@ -166,6 +186,9 @@
     onError() { note.textContent = '디스플레이 연결 설정을 확인해주세요.'; },
   });
   video.addEventListener('error', () => { note.textContent = `영상을 불러오지 못했어요: ${profile.display[currentClip] || ''}`; });
+  for (const image of [gameBack,gameGraphic]) image.addEventListener('error', () => {
+    if (!image.hidden) note.textContent = `게임 배경을 불러오지 못했어요: ${image.getAttribute('src')}`;
+  });
   video.addEventListener('loadeddata', () => { if (waterSync()) startWaterSync(); });
   video.addEventListener('seeked', () => { if (waterSync()) startWaterSync(); });
   document.getElementById('displayStart').addEventListener('click', () => {
