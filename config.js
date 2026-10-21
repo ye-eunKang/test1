@@ -98,6 +98,10 @@ window.FishConfig = {
         rearmQuietMs:400,         // 잠깐 멈춘 뒤 다시 흔들어야 다음 물건으로 변경
         armDelayMs:250,
         sensorGapMs:700,
+        promptFadeMs:550,         // 중앙 안내 문구가 사라지는 시간
+        messageIntervalMs:3000,   // 물건 → 첫 말풍선 → 두 번째 말풍선 사이 간격
+        hapticPeakMs:18,          // 흔들기 방향이 감지될 때 짧은 진동(ms)
+        hapticDrawPattern:[45,30,65], // 물건을 뽑을 때 진동·쉼·진동(ms)
       },
       assets:{
         finishGif:'',

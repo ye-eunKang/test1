@@ -3,20 +3,47 @@ FishApp.registerInteraction('fish06',{
   viewId:'fish06View',
   mount(root,flow){
     'use strict';
-    const $=id=>root.querySelector('#'+id),assets=flow.config.assets,items=assets.items;
+    const $=id=>root.querySelector('#'+id),assets=flow.config.assets,items=assets.items,cfg=flow.config.game;
     const preview=matchMedia('(hover: hover) and (pointer: fine)').matches
       ||new URLSearchParams(location.search).get('debug')==='1';
     let scope=null,current=null,chosen=null,version=0,busy=false,permission=false,permissionTask=null;
-    const detector=new HorizontalShake(flow.config.game,()=>roll());
+    let drawScope=null,promptFade=null,promptAttempt=0,messagesShown=0;
+    const detector=new HorizontalShake(cfg,()=>roll({haptic:true}),onPeak);
     const feedback=text=>{$('tradeFeedback').textContent=text;};
+    function vibrate(pattern){
+      if(!scope?.active||document.hidden)return;
+      try {if(typeof navigator.vibrate==='function')navigator.vibrate(pattern);}catch(_){}
+    }
+    function stopVibration(){try {navigator.vibrate?.(0);}catch(_){} }
+    function fadePrompt(){
+      if(promptFade)return promptFade;
+      $('tradePrompt').classList.add('is-fading');$('tradePrompt').setAttribute('aria-hidden','true');
+      promptFade=scope.delay(cfg.promptFadeMs??550);return promptFade;
+    }
+    function onPeak({count}){
+      if(!scope?.active||root.dataset.step!=='game'||busy||chosen)return;
+      fadePrompt();if(!current)feedback('');
+      if(count<cfg.shakeAlternations+1)vibrate(cfg.hapticPeakMs??18);
+      if(!current){
+        const active=scope,attempt=++promptAttempt;
+        active.delay(cfg.shakeWindowMs+300).then(done=>{
+          if(done&&scope===active&&attempt===promptAttempt&&!current&&!busy&&root.dataset.step==='game'){
+            promptFade=null;$('tradePrompt').classList.remove('is-fading');$('tradePrompt').removeAttribute('aria-hidden');
+          }
+        });
+      }
+    }
     function reset(){
+      drawScope?.abort();drawScope=null;promptFade=null;promptAttempt++;messagesShown=0;
       version++;current=chosen=null;busy=false;detector.reset();
       root.dataset.step='intro';root.dataset.item='';
+      root.dataset.messages='0';root.style.setProperty('--trade-prompt-fade',`${cfg.promptFadeMs??550}ms`);
       $('tradeIntro').hidden=false;$('tradeGame').hidden=true;
       $('tradeInstruction').hidden=false;$('tradeMentOne').hidden=$('tradeMentTwo').hidden=true;
+      $('tradePrompt').classList.remove('is-fading');$('tradePrompt').removeAttribute('aria-hidden');
       $('tradeItem').hidden=true;$('tradeConfirm').hidden=true;$('tradeConfirm').disabled=false;
       $('tradeConfirm').textContent='이걸로 정했어!';$('tradePreviewShake').hidden=!preview;
-      feedback('휴대폰을 좌우로 세게 흔들어주세요.');
+      feedback('');
     }
     function warm(){
       const sources=[assets.introOne,assets.introTwo,assets.instruction,assets.frame,
@@ -41,7 +68,7 @@ FishApp.registerInteraction('fish06',{
     function requestMotion(){
       const active=scope;
       enable().then(()=>{
-        if(scope===active&&active?.active&&!current)feedback('휴대폰을 좌우로 세게 흔들어주세요.');
+        if(scope===active&&active?.active&&!current)feedback('');
       },()=>{
         if(scope===active&&active?.active&&!chosen)feedback(preview?'미리보기 버튼으로 물건을 골라보세요.':'화면을 한 번 터치해 흔들기 권한을 허용해주세요.');
       });
@@ -51,23 +78,37 @@ FishApp.registerInteraction('fish06',{
       requestMotion();root.dataset.step='game';$('tradeIntro').hidden=true;$('tradeGame').hidden=false;
       detector.reset();flow.announce('휴대폰을 좌우로 세게 흔들면 물건이 나타나요.');
     }
-    async function roll(){
+    async function roll({haptic=false}={}){
       if(!scope?.active||root.dataset.step!=='game'||busy||chosen||document.hidden)return;
       const pool=items.filter(item=>item.id!==current?.id);
       const item=pool[Math.floor(Math.random()*pool.length)];
       if(!item)return;
       busy=true;const active=scope,draw=++version;
+      drawScope?.abort();const sequence=drawScope=new RunScope();
+      messagesShown=0;root.dataset.messages='0';
+      if(haptic)vibrate(cfg.hapticDrawPattern??[45,30,65]);
       $('tradeConfirm').disabled=true;
       const images=[['tradeItem',item.image],['tradeMentOne',item.mentOne],['tradeMentTwo',item.mentTwo]];
       for(const [id,src] of images){$(id).hidden=true;$(id).src=src;}
-      await Promise.all(images.map(([id])=>$(id).decode?.().catch(()=>{})));
-      if(scope!==active||!active.active||draw!==version)return;
+      const ready=images.map(([id])=>Promise.resolve($(id).decode?.()).catch(()=>{}));
+      await Promise.all([ready[0],fadePrompt()]);
+      const valid=()=>scope===active&&active.active&&sequence.active&&draw===version;
+      if(!valid())return;
       current=item;root.dataset.item=item.id;
       $('tradeItem').alt=item.label;$('tradeMentOne').alt=`${item.label} 소개`;$('tradeMentTwo').alt=`${item.label} 이야기`;
-      for(const [id] of images)$(id).hidden=false;
+      $('tradeItem').hidden=false;
       $('tradeInstruction').hidden=true;$('tradeConfirm').hidden=false;$('tradeConfirm').disabled=false;
       busy=false;feedback('다시 흔들거나, 이걸로 정해줘!');
       flow.announce(`${item.label}이 나왔어요. 다시 흔들어 바꾸거나 이걸로 정했어 버튼을 눌러주세요.`);
+      // 표시된 물건을 기준으로 3초 뒤 첫 말풍선, 그 뒤 3초 뒤 두 번째 말풍선입니다.
+      (async()=>{
+        if(!await sequence.delay(cfg.messageIntervalMs??3000))return;
+        await ready[1];if(!valid())return;
+        $('tradeMentOne').hidden=false;messagesShown=1;root.dataset.messages='1';
+        if(!await sequence.delay(cfg.messageIntervalMs??3000))return;
+        await ready[2];if(!valid())return;
+        $('tradeMentTwo').hidden=false;messagesShown=2;root.dataset.messages='2';
+      })();
     }
     async function confirm(){
       if(!scope?.active||!current||chosen||busy||root.dataset.step!=='game')return;
@@ -96,16 +137,16 @@ FishApp.registerInteraction('fish06',{
           if(root.dataset.step==='game'&&!busy&&permission&&!document.hidden)detector.feed(event);
         });
         scope.listen($('tradeConfirm'),'click',confirm);
-        scope.listen($('tradePreviewShake'),'click',()=>{if(preview)roll();});
-        scope.listen(document,'visibilitychange',()=>detector.reset());
-        scope.listen(window,'blur',()=>detector.reset());
+        scope.listen($('tradePreviewShake'),'click',()=>{if(preview)roll({haptic:true});});
+        scope.listen(document,'visibilitychange',()=>{detector.reset();if(document.hidden)stopVibration();});
+        scope.listen(window,'blur',()=>{detector.reset();stopVibration();});
         scope.listen(window,'fish:item-choice-saved',event=>{
           if(chosen?.id===event.detail.id)chosen=event.detail;
         });
-        scope.cleanup(()=>{version++;busy=false;});
+        scope.cleanup(()=>{version++;promptAttempt++;busy=false;drawScope?.abort();drawScope=null;stopVibration();});
       },
       stop(){scope?.abort();scope=null;detector.reset();},reset,
-      getState:()=>({step:root.dataset.step,itemId:current?.id??null,selected:chosen,busy}),
+      getState:()=>({step:root.dataset.step,itemId:current?.id??null,selected:chosen,busy,messagesShown}),
     };
   },
 });

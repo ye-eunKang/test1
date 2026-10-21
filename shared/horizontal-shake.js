@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   class HorizontalShake {
-    constructor(config,onShake) {this.config=config;this.onShake=onShake;this.reset();}
+    constructor(config,onShake,onPeak=()=>{}) {this.config=config;this.onShake=onShake;this.onPeak=onPeak;this.reset();}
     reset(at=performance.now()) {
       this.armedAt=at+this.config.armDelayMs;this.lastAt=null;this.gravity=null;
       this.firstPeak=null;this.lastPeak=null;this.sign=0;this.peaks=0;
@@ -45,6 +45,7 @@
       const sign=Math.sign(value);
       if(sign===this.sign||(this.lastPeak!==null&&at-this.lastPeak<cfg.minPeakGapMs))return false;
       this.firstPeak??=at;this.lastPeak=at;this.sign=sign;this.peaks++;
+      this.onPeak({value,at,count:this.peaks});
       if(this.peaks<cfg.shakeAlternations+1)return false;
       this.lastShake=at;this.lastStrong=at;this.locked=true;this.clearPeaks();
       this.onShake();return true;
