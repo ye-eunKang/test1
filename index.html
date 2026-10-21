@@ -16,6 +16,7 @@
   <script src="shared/run-scope.js" defer></script>
   <script src="shared/stillness.js" defer></script>
   <script src="shared/motion.js" defer></script>
+  <script src="shared/ending-gif.js" defer></script>
   <script src="app.js" defer></script>
   <script src="interactions/fish05.js" defer></script>
   <script src="interactions/fish01.js" defer></script>
@@ -158,12 +159,13 @@
           <button id="simulate" class="quiet secondary" hidden>PC 미리보기 · 수평으로 들기</button>
         </div>
       </section>
-      <!-- 4. 기다림 화면 — 영상은 추후 추가 -->
+      <!-- 4. 수평 유지 → GIF 한 번 → 홈 -->
       <section id="ocean" class="scene" hidden>
         <div id="bubbles" aria-hidden="true">
         </div>
         <img id="waitingMessage" class="art waiting" src="assets/web/5_10-말풍선.png" decoding="async" alt="물고기가 헤엄칠 수 있도록 우리 잠시 기다려보자">
         <img id="endingFish" class="art fish" alt="물고기" hidden>
+        <div id="endingMedia" hidden></div>
         <p id="endingStatus" role="status"></p>
         <button id="previewStill" class="quiet secondary" hidden>PC 미리보기 · 3초 정지</button>
         <button id="endingPlay" class="quiet" hidden>물고기 영상 재생하기</button>

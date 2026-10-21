@@ -94,7 +94,23 @@
   window.addEventListener('fish:game-complete', () => emit('game-complete'));
   window.addEventListener('fish:level-ready', () => emit('waiting'));
   window.addEventListener('fish:swim-started', () => emit('swim-started'));
-  window.addEventListener('fish:finished', () => emit('finish'));
+  window.addEventListener('fish:finished', () => {
+    if (!client || applying) return;
+    const finishing = client, session = finishing.state?.session;
+    // 홈 표시와 종료 통신을 분리합니다. Wi-Fi가 끊겨도 종료 신호는 재연결 후 전달합니다.
+    client = null; clearTimeout(tiltWatch);
+    lastPhase = ''; pendingTag = false;
+    finishing.onStatus = () => {};
+    finishing.onError = () => finishing.stop();
+    finishing.onState = state => {
+      if (!session || state.session !== session || state.owner !== finishing.clientId
+        || !['reveal','waiting','swimming'].includes(state.phase)) { finishing.stop(); return; }
+      // 대기 화면 진입 신호까지 오프라인 큐에 있었다면 순서대로 먼저 전달합니다.
+      if (state.phase === 'reveal') finishing.event('waiting');
+      finishing.event('finish');
+    };
+    finishing.event('finish');
+  });
   document.addEventListener('visibilitychange', () => {
     clearTimeout(tiltWatch);
     if (document.hidden) { client?.event('pour',{active:false}); lastPour = null; }

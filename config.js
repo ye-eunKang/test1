@@ -13,7 +13,8 @@ window.FishConfig = {
   common: {
     revealChangeDeg: 20,       // 5_09: 안내가 뜬 순간보다 이 각도 이상 움직이면 다음 화면
     revealChangeHoldMs: 200,   // 각도 변화 확인 시간
-    finishReturnMs: 3000,      // 말풍선이 사라진 뒤 홈으로 돌아가기까지의 시간
+    finishGifSrc: 'assets/phone-finish.gif', // 마지막에 한 번 재생. 물고기별 assets.finishGif로 따로 지정 가능
+    finishReturnMs: 3000,      // 정지 이미지이거나 GIF를 못 불러왔을 때만 사용하는 대기 시간
     rotationSeconds: 30,        // 방사형 배경 한 바퀴 (느리고 부드럽게 계속 회전)
     levelTolerance: 12,         // 5_10: 수평 허용 오차(도)
     levelHoldMs: 900,           // 5_10: 이 시간 동안 수평이면 말풍선을 숨깁니다.

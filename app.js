@@ -66,6 +66,8 @@
     video.load();
     video.hidden = true;
     $('endingFish').hidden = true;
+    $('endingMedia').hidden = true;
+    $('endingMedia').replaceChildren();
     $('endingPlay').hidden = true;
     finishGeneration++;
     levelSince = null;
@@ -108,6 +110,9 @@
   function prepareArtwork(id) {
     const assets = profiles.find(entry => entry.id === id)?.assets;
     if (!assets) return;
+    // 게임 중에는 파일만 다운로드하여, 마지막 순간에 GIF 로딩을 기다리지 않게 합니다.
+    const finishGif = assets.finishGif ?? common.finishGifSrc;
+    if (finishGif) EndingGif.preload(finishGif).catch(() => {});
     // iPad의 영상이 재생되는 동안 폰의 다음 이미지를 미리 불러오고 디코딩합니다.
     for (const key of ['rays','fish','fishName','awakeMessage','levelMessage','waitingMessage','bubble']) {
       const src = assets[key];
@@ -236,6 +241,7 @@
     assignArtwork();
     $('waitingMessage').hidden = !profile.assets.waitingMessage;
     $('endingFish').hidden = true;
+    $('endingMedia').hidden = true;
     $('fishVideo').hidden = true;
     $('endingPlay').hidden = true;
     $('endingPlay').textContent = '물고기 영상 재생하기';
@@ -268,14 +274,27 @@
     clearTimeout(sensorWatch);
     $('ocean').dataset.ready = 'true';
     $('waitingMessage').hidden = true;
-    setArtworkSource('endingFish', profile.assets.fish);
-    $('endingFish').hidden = !profile.assets.fish;
+    $('endingFish').hidden = true;
     $('endingPlay').hidden = true;
     $('previewStill').hidden = true;
     $('endingStatus').textContent = '';
     announce('물고기를 보내고 있어요. 잠시 기다려주세요.');
+    const stillValid = () => run === current && current.active && version === finishGeneration
+      && screen === 'ocean' && waitingReady;
+    const src = profile.assets.finishGif ?? common.finishGifSrc;
+    if (src) {
+      const result = await EndingGif.play($('endingMedia'),src,{
+        scope:current,stillDurationMs:common.finishReturnMs ?? 3000,
+      });
+      if (!stillValid() || result.status === 'cancelled') return;
+      if (result.status === 'completed') { finishInteraction(); return; }
+    }
+    // 파일 로딩에 실패하면 기존 정지 물고기를 표시하고 홈으로 돌아갑니다.
+    if (!stillValid()) return;
+    setArtworkSource('endingFish', profile.assets.fish);
+    $('endingFish').hidden = !profile.assets.fish;
     if (await current.delay(common.finishReturnMs ?? 3000)) {
-      if (run === current && version === finishGeneration && screen === 'ocean' && waitingReady) finishInteraction();
+      if (stillValid()) finishInteraction();
     }
   }
   function holdCompletion() {
@@ -291,12 +310,12 @@
     if (!run?.active || completionRequested) return;
     completionRequested = true;
     const fish = activeId;
-    const linked = window.PhoneSync?.isActive(fish);
     holdCompletion();
     window.dispatchEvent(new CustomEvent('fish:finished', {detail:{fish}}));
-    if (!linked) showHome();
+    // GIF가 끝나면 폰은 즉시 홈으로 갑니다. 종료 통신은 동기화 모듈이 계속 처리합니다.
+    showHome();
   }
-  // 연결 모듈이 호출하는 기존 진입점도 같은 3초 자동 복귀로 연결합니다.
+  // 연결 모듈의 기존 진입점도 같은 GIF 한 번 재생으로 연결합니다.
   function playEnding() { return advanceWaiting(); }
 
   function onMotion(sample) {
