@@ -26,7 +26,7 @@
 #homeGuideGif {
   position: absolute;
   left: 10%;
-  top: 40%;
+  top: 30%;
   width: 80%;
   height: auto;
   display: block;
@@ -59,4 +59,25 @@
 #homeGuide[hidden], #homeContent [hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   #homeGuidePhoto { animation: none; }
+}
+#homeNfcHint {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 73%;
+  width: 90%;
+  margin: 0;
+  transform: translateX(-50%);
+  z-index: 2;
+
+  color: #147f8d;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* 두 번째 멘트: NFC 태그 대기 중에만 표시 */
+#homeGuide[data-phase="await-tag"] #homeNfcHint {
+  display: block;
 }

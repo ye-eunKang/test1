@@ -13,6 +13,13 @@
     returnHomeMs: 4000,
     disconnectGraceMs: 60000,
     fish: {
+      fish01: {
+        label: '1번 · 흰동가리', tdSignal: 'fish01',
+        display: {
+          walk: 'assets/S1_walk.mp4', water: 'assets/S1_water.mp4',
+          main: 'assets/S1_main.mp4', ending: 'assets/S1_ending.mp4',
+        },
+      },
       fish05: {
         label: '5번 · 해포리고기',
         tdSignal: 'fish05',
@@ -24,7 +31,7 @@
         },
       },
       // 추가 게임은 config.js의 id와 같은 키로 이곳에 등록하세요.
-      // fish01: { label: '1번', tdSignal: 'fish01', display: { walk: '...', water: '...', main: '...', ending: '...' } },
+      // fish02: { label: '2번', tdSignal: 'fish02', display: { walk: '...', water: '...', main: '...', ending: '...' } },
     },
   };
 });

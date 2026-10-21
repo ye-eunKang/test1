@@ -16,6 +16,7 @@
   let water = null;
   let levelSince = null;
   let tiltSince = null;
+  let revealOrigin = null;
   let finishGeneration = 0;
   let revealReady = false;
   let endingStarted = false;
@@ -69,6 +70,7 @@
     finishGeneration++;
     levelSince = null;
     tiltSince = null;
+    revealOrigin = null;
     revealReady = false;
     endingStarted = false;
     waitingReady = false;
@@ -131,6 +133,7 @@
     });
   }
   function startInteraction(id) {
+    if (id === '1') id = 'fish01';
     if (id === '5') id = 'fish05';
     const entry = profiles.find((item) => item.id === id);
     const definition = definitions.get(id);
@@ -194,6 +197,7 @@
     instances.get(activeId)?.stop();
     assignArtwork();
     revealReady = false;
+    revealOrigin = null; tiltSince = null;
     revealStep = 'awake';
     $('sensorPanel').hidden = true;
     setArtworkSource('message', profile.assets.awakeMessage);
@@ -206,23 +210,24 @@
   function advanceReveal() {
     if (screen !== 'reveal' || !run?.active) return;
     if (revealStep === 'level') {
-      // 5_09는 터치로 넘기지 않고 onMotion에서 수평을 판정합니다.
+      // 5_09는 터치로 넘기지 않고 안내가 뜬 순간부터의 각도 변화를 판정합니다.
       return;
     }
     revealStep = 'level';
     setArtworkSource('message', profile.assets.levelMessage);
     $('message').hidden = !profile.assets.levelMessage;
     $('message').className = 'art level';
-    $('message').alt = '물고기가 헤엄칠 수 있도록 핸드폰을 수평으로 유지해주세요';
-    revealReady = true; levelSince = null;
+    $('message').alt = '휴대폰을 천천히 기울여 다음 안내로 넘어가세요';
+    revealReady = true; levelSince = null; tiltSince = null;
+    revealOrigin = motion.isFresh() ? {beta:motion.last.beta,gamma:motion.last.gamma} : null;
     syncSensorButtons(); watchSensor();
-    announce('휴대폰 화면이 위를 향하도록 수평으로 놓아주세요.');
+    announce('휴대폰의 각도를 천천히 바꿔주세요.');
   }
   function endingWait() {
     if (!run?.active) return;
     revealReady = false;
     finishGeneration++;
-    levelSince = null; tiltSince = null;
+    levelSince = null; tiltSince = null; revealOrigin = null;
     endingStarted = false;
     waitingReady = false;
     $('ocean').dataset.ready = 'false';
@@ -249,7 +254,7 @@
     show('ocean');
     syncSensorButtons();
     watchSensor();
-    announce('휴대폰을 기울이면 말풍선이 사라지고 잠시 뒤 첫 화면으로 돌아갑니다.');
+    announce('휴대폰을 수평으로 유지하면 물고기가 나타납니다.');
     window.dispatchEvent(new CustomEvent('fish:level-ready', {detail:{fish:activeId}}));
   }
   async function advanceWaiting() {
@@ -258,6 +263,7 @@
     waitingReady = true;
     endingStarted = true;
     tiltSince = null;
+    levelSince = null;
     clearTimeout(sensorWatch);
     $('ocean').dataset.ready = 'true';
     $('waitingMessage').hidden = true;
@@ -294,25 +300,29 @@
 
   function onMotion(sample) {
     if (document.hidden || ![sample.beta, sample.gamma, sample.receivedAt].every(Number.isFinite)) {
-      levelSince = null; tiltSince = null; return;
+      levelSince = null; tiltSince = null; revealOrigin = null; return;
     }
     const interrupted = motion.previousAt !== undefined
       && (sample.receivedAt - motion.previousAt > common.sensorGapMs || sample.receivedAt < motion.previousAt);
     if (screen === 'home') water?.onOrientation(sample);
     if (screen === 'reveal' && revealReady) {
+      if (interrupted) revealOrigin = null;
+      revealOrigin ??= {beta:sample.beta,gamma:sample.gamma};
+      // ±180도 경계의 작은 변화를 큰 움직임으로 처리하지 않습니다.
+      const difference = (a,b) => Math.abs((a-b+540)%360-180);
+      const change = Math.max(difference(sample.beta,revealOrigin.beta),difference(sample.gamma,revealOrigin.gamma));
+      const moved = change >= (common.revealChangeDeg ?? 20);
+      if (!moved || interrupted) tiltSince = null;
+      if (moved) {
+        tiltSince ??= sample.receivedAt;
+        if (sample.receivedAt - tiltSince >= (common.revealChangeHoldMs ?? 200)) endingWait();
+      }
+    } else if (screen === 'ocean' && !waitingReady && !endingStarted) {
       const flat = Math.abs(sample.beta) < common.levelTolerance && Math.abs(sample.gamma) < common.levelTolerance;
       if (!flat || interrupted) levelSince = null;
       if (flat) {
         levelSince ??= sample.receivedAt;
-        if (sample.receivedAt - levelSince >= common.levelHoldMs) endingWait();
-      }
-    } else if (screen === 'ocean' && !waitingReady && !endingStarted) {
-      const threshold = Math.max(common.levelTolerance + 5, common.finishTiltDeg ?? 20);
-      const tilted = Math.max(Math.abs(sample.beta), Math.abs(sample.gamma)) >= threshold;
-      if (!tilted || interrupted) tiltSince = null;
-      if (tilted) {
-        tiltSince ??= sample.receivedAt;
-        if (sample.receivedAt - tiltSince >= (common.finishTiltHoldMs ?? 200)) advanceWaiting();
+        if (sample.receivedAt - levelSince >= common.levelHoldMs) advanceWaiting();
       }
     }
     motion.previousAt = sample.receivedAt;
@@ -328,8 +338,9 @@
     $('sensorPanel').hidden = screen !== 'reveal' || !revealReady || (!debug && !permissionNeeded);
     $('simulate').hidden = !debug || screen !== 'reveal' || !revealReady;
     $('previewStill').hidden = !debug || screen !== 'ocean' || waitingReady || endingStarted;
-    $('previewStill').textContent = 'PC 미리보기 · 기울이기';
-    $('sensorNote').textContent = motion.enabled ? '화면이 위를 향하도록 평평하게 들어주세요.' : motionHint;
+    $('simulate').textContent = 'PC 미리보기 · 각도 바꾸기';
+    $('previewStill').textContent = 'PC 미리보기 · 수평 유지';
+    $('sensorNote').textContent = motion.enabled ? '휴대폰의 각도를 천천히 바꿔주세요.' : motionHint;
   }
   function watchSensor() {
     clearTimeout(sensorWatch);
@@ -421,7 +432,8 @@
       $('homeTiltValue').textContent = `${event.target.value}°`;
     });
     const params = new URLSearchParams(location.search);
-    const selected = params.get('fish') || params.get('interaction');
+    const rawSelected = params.get('fish') || params.get('interaction');
+    const selected = rawSelected === '1' ? 'fish01' : rawSelected === '5' ? 'fish05' : rawSelected;
     const phase = params.get('phase');
     const preview = debug ? params.get('preview') : null;
     showHome();
