@@ -515,14 +515,14 @@ button:focus-visible {
 .dish-feedback:empty { display: none; }
 /* 1번 물고기는 레퍼런스의 위치를 쓰고, 이후 수평 안내는 공통 화면을 씁니다. */
 #stage[data-fish="fish01"] .fish-name { top: 20%; left: 26%; width: 48%; }
-#stage[data-fish="fish01"] #fish { top: 35%; left: 24%; width: 56%; }
+#stage[data-fish="fish01"] #fish { top: 40%; left: 24%; width: 56%; }
 #stage[data-fish="fish01"] .awake,
 #stage[data-fish="fish01"] .level {
   top: 68%;
   left: 14%;
   width: 72%;
 }
-#stage[data-fish="fish01"] #rays { top: 46%; width:100%  }
+#stage[data-fish="fish01"] #rays { top: 46%;  }
 @media(prefers-reduced-motion: reduce) { .dish-moving[data-settling="true"] { transition: none; } }
 @media(prefers-reduced-motion: reduce) {
   .dish-tray[data-pressing="true"]::after { animation: none; transform: scaleX(1); }
